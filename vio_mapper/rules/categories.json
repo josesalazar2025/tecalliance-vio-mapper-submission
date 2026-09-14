@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "description": "The neutral internal categories every catalogue maps into. This file cites no publisher: the category names are this project's own, and it is the only place a registry vocabulary and a catalogue vocabulary are allowed to meet. Each side maps its own labels into these names independently, so no vocabulary file has to name the other side's values. A label neither side maps yields no category and compares as unknown. A category only one side produces is a supported state rather than a gap: it is declared per category in produced_by, and a comparison against it returns unknown, which earns no points and vetoes nothing.",
+  "axes": {
+    "drive": {
+      "description": "Internal drive category. Read by the candidate drive comparison and the VIN drive comparison, so the two can never drift apart.",
+      "mapped_by": {
+        "registry": "submodel_drive",
+        "catalogue": "reference_drive_system"
+      },
+      "values": {
+        "awd": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "fwd": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "rwd": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        }
+      }
+    },
+    "fuel": {
+      "description": "Internal fuel category, compared between a source row's fuel field and a candidate's fuel field.",
+      "mapped_by": {
+        "registry": "registry_fuel",
+        "catalogue": "catalogue_fuel"
+      },
+      "values": {
+        "petrol": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "diesel": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "electric": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "petrol_hybrid": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ],
+          "note": "Plug-in and non-plug-in hybrids share one category because the reference vocabulary does not separate them; a reference listing both would tie and go to review rather than pick one."
+        },
+        "diesel_hybrid": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ],
+          "note": "Plug-in and non-plug-in hybrids share one category because the reference vocabulary does not separate them; a reference listing both would tie and go to review rather than pick one."
+        },
+        "lpg": {
+          "produced_by": [
+            "registry"
+          ],
+          "one_sided_note": "LPG and CNG are their own categories, distinct from the reference's combined Petrol/LPG, so the two disagree rather than falsely agreeing."
+        },
+        "cng": {
+          "produced_by": [
+            "registry"
+          ],
+          "one_sided_note": "LPG and CNG are their own categories, distinct from the reference's combined Petrol/LPG, so the two disagree rather than falsely agreeing."
+        },
+        "petrol_lpg": {
+          "produced_by": [
+            "catalogue"
+          ],
+          "one_sided_note": "LPG and CNG are their own categories, distinct from the reference's combined Petrol/LPG, so the two disagree rather than falsely agreeing."
+        }
+      }
+    },
+    "fuel_family": {
+      "description": "The fuel family a free-text submodel reading can corroborate, paired with a hybrid flag. Narrower than the fuel axis on purpose: this only has to answer 'does the SUBMODEL text contradict the fuel field', so gas blends have no entry.",
+      "mapped_by": {
+        "registry": "registry_submodel_fuel",
+        "catalogue": "catalogue_submodel_fuel"
+      },
+      "values": {
+        "petrol": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "diesel": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "electric": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        }
+      }
+    },
+    "body": {
+      "description": "Internal body category, compared between a source row's body field and a candidate's structure field. A category exists only where both publishers print the same name for the structure, which is the only pairing the registry and catalogue sides record.",
+      "mapped_by": {
+        "registry": "registry_bodies",
+        "catalogue": "catalogue_structures"
+      },
+      "values": {
+        "convertible": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        },
+        "saloon": {
+          "produced_by": [
+            "registry",
+            "catalogue"
+          ]
+        }
+      }
+    },
+    "cab": {
+      "description": "Internal cab configuration category. Registry-only by nature: the reference extract carries no cab column, so nothing on the catalogue side produces one and no comparison reads it.",
+      "mapped_by": {
+        "registry": "cab_configurations"
+      },
+      "values": {
+        "single": {
+          "produced_by": [
+            "registry"
+          ],
+          "one_sided_note": "Cab wording observed in SUBMODEL free text and recorded for the audit trail only. No correspondence with any reference structure is asserted."
+        },
+        "double": {
+          "produced_by": [
+            "registry"
+          ],
+          "one_sided_note": "Cab wording observed in SUBMODEL free text and recorded for the audit trail only. No correspondence with any reference structure is asserted."
+        },
+        "extended": {
+          "produced_by": [
+            "registry"
+          ],
+          "one_sided_note": "Cab wording observed in SUBMODEL free text and recorded for the audit trail only. No correspondence with any reference structure is asserted."
+        }
+      }
+    }
+  }
+}

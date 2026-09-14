@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIO Mapper — TecAlliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="brand">
+    <i class="tick"></i><b>TecAlliance</b><span>VIO Mapper</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="meta">
+    <div>Reference <b id="meta-reference">…</b></div>
+    <div>Algorithm <b id="meta-version">…</b></div>
+  </div>
+</header>
+
+<main class="shell">
+
+  <!-- ---------- Upload ------------------------------------------------ -->
+  <section id="view-upload" class="intro">
+    <h1>Map a vehicle register to TecDoc kTypes</h1>
+    <p class="lede">
+      Upload a New Zealand registry extract. Every row is compared against the bundled reference
+      catalogue on capacity, fuel, power, drive, body, variant and engine. Known contradictions veto
+      a candidate; the default policy accepts only a sufficiently supported candidate whose criterion
+      set dominates its rivals. Rows that stop are named with the field they stopped on.
+    </p>
+
+    <div class="card">
+      <div class="card-body">
+        <div id="dropzone" class="dropzone" tabindex="0" role="button"
+             aria-label="Choose or drop a registry file">
+          <div class="icon">⬆</div>
+          <div class="primary" id="drop-primary">Drop a registry file, or click to choose</div>
+          <div class="secondary" id="drop-secondary">.xlsx, .xlsm, .csv, .tsv or .txt</div>
+        </div>
+        <input type="file" id="file-input" class="hidden" accept=".xlsx,.xlsm,.csv,.tsv,.txt">
+
+        <div class="reference-note">
+          <span>ℹ</span>
+          <div>
+            The reference catalogue <b id="reference-name">…</b> ships with the application and is
+            held fixed. Every upload runs the documented default policy; diagnostic policy comparisons
+            remain separate from this review workflow.
+          </div>
+        </div>
+
+        <div style="margin-top:18px; display:flex; align-items:center; gap:12px;">
+          <button type="button" class="btn btn-primary btn-lg" id="run-button" disabled>
+            Run the mapping
+          </button>
+          <span class="muted" style="font-size:12.5px;" id="run-hint">Choose a file to begin.</span>
+        </div>
+
+        <div id="upload-error" class="error hidden"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- Results ----------------------------------------------- -->
+  <section id="view-run" class="hidden">
+    <div class="runbar">
+      <div>
+        <div class="file" id="run-file">…</div>
+        <div class="facts" id="run-facts"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="new-run">New file</button>
+        <button type="button" class="btn btn-primary" id="download">Download workbook</button>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="summary">Summary</button>
+      <button class="tab" data-tab="review">Review brief <span class="count" id="count-review">0</span></button>
+      <button class="tab" data-tab="audit">Audit</button>
+      <button class="tab" data-tab="rules">Rule sets</button>
+    </nav>
+
+    <div id="panel-summary" class="panel"></div>
+    <div id="panel-review" class="panel hidden"></div>
+    <div id="panel-audit" class="panel hidden"></div>
+    <div id="panel-rules" class="panel hidden"></div>
+  </section>
+</main>
+
+<div id="drawer-root"></div>
+<div id="overlay-root"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,729 @@
+{
+  "schema_version": 1,
+  "description": "Value vocabularies. Three axes, declared per section. PROVENANCE: \"official\" (a publisher's own vocabulary), \"correspondence\" (an asserted equivalence between two taxonomies), or \"dataset_derived\" (inferred from supplied data). SOURCE_KIND, on official sections: \"specification\" (a published table that closes the vocabulary) or \"first_party_data\" (a publisher's own extract, authoritative for the values it states but silent on where the table ends). COMPLETENESS: \"complete\", \"partial\", or \"unverified\". Both NZTA and TecAlliance are first-party here -- the NZTA VIRM tables close their vocabularies, while the supplied TecAlliance reference extract states its values without closing them.",
+  "scope": "The New Zealand register: what an NZTA field may contain, and the readings of its free-text fields. Replaced wholesale when the country changes.",
+  "sources": {
+    "nzta_virm_attributes": {
+      "title": "NZTA VIRM, entry certification 2-2 Vehicle attributes definitions (Table 2-2-8)",
+      "url": "https://vehicleinspection.nzta.govt.nz/virms/entry-certification/pre-reg-and-vin/vehicle-attributes/vehicle-attributes-definitions",
+      "scope": "Official vehicle type and body type codes, and the valid combinations of the two",
+      "accessed": "2026-09-12",
+      "local_copy": "docs/rule-sources/nz/nzta_virm_attributes.md",
+      "sha256": "480a28f20fc0ea079e6469e667310752fe0df2fe39cd79e6eb0c047c5bba6d07",
+      "retrieval_note": "Server-rendered. The stored transcription reproduces Tables 2-2-8 and 2-2-9 only; the page carries further attribute tables that no vocabulary here reads."
+    },
+    "nzta_virm_classes": {
+      "title": "NZTA VIRM, entry certification 5-5 Identifying the vehicle class",
+      "url": "https://vehicleinspection.nzta.govt.nz/virms/entry-certification/intro/the-inspection-and-certification-process/identifying-the-vehicle-class",
+      "scope": "Official vehicle class codes with mass and seating criteria",
+      "accessed": "2026-09-12",
+      "local_copy": "docs/rule-sources/nz/nzta_virm_classes.md",
+      "sha256": "b51a495238970e57ea34b9ed3870116f12d40da08e8b5be289a9c2d6dd7a9b2d",
+      "retrieval_note": "Server-rendered. The stored transcription reproduces the whole class table, including the DEFINITION rows and the note that the published table interleaves with the class rows."
+    },
+    "nzta_mvr_fields": {
+      "title": "NZTA Motor Vehicle Register open data, field descriptions",
+      "url": "https://opendata-nzta.opendata.arcgis.com/pages/mvr-data-field-descriptions",
+      "scope": "Field definitions for the published register extract. Describes MOTIVE_POWER in prose ('the vehicle's energy source, for example petrol, diesel or electric') and BODY_TYPE as Text (Categorical); it enumerates no permitted values for either, which is why the value lists here are taken from the VIRM tables and not from this page.",
+      "accessed": "2026-09-12",
+      "retrieval_note": "An ArcGIS Hub app that renders its field table client-side: the served HTML carries only a truncated copy that stops mid-entry. The stored transcription was taken from the page item the page itself loads, https://www.arcgis.com/sharing/rest/content/items/de5669aeb6304620b09e79fe84f40b7c/data?f=json at values.layout.sections[1].rows[0].cards[0].component.settings.markdown. Cited for the field definitions; it enumerates no values for any field.",
+      "local_copy": "docs/rule-sources/nz/nzta_mvr_fields.md",
+      "sha256": "e976d86fe9a5f8246ad851cd7d3da0dd7250de5bb18d88b137726d2f7fd0a733"
+    },
+    "nzta_virm_recording_attributes": {
+      "title": "NZTA VIRM, entry certification 2-1 Recording vehicle attributes (section 10)",
+      "url": "https://vehicleinspection.nzta.govt.nz/virms/entry-certification/pre-reg-and-vin/vehicle-attributes",
+      "scope": "States that the register's sub-model field is unvalidated free text: 'Sub-model is free text and is not validated.' This is the authority for treating every SUBMODEL reading as a reading of free text rather than of a code list.",
+      "accessed": "2026-09-12",
+      "retrieval_note": "The page paginates client-side; the stored transcription was taken from its print-friendly rendering, ?print-friendly=1.",
+      "local_copy": "docs/rule-sources/nz/nzta_virm_recording_attributes.md",
+      "sha256": "2a1aa2c61d34db2df3c5c9dec6d5568b2656d0715a4fd66604a075a9a2ea4bb5"
+    }
+  },
+  "columns": {
+    "description": "The register column each role is recorded in. The matcher reads roles, not column names: a role is what a field means to a decision (the displacement, the fuel, the year), and this table says which column of this register carries it. A role absent here is a field this register does not publish, and every comparison that reads it stays unknown.",
+    "values": {
+      "id": "ID",
+      "make": "MAKE",
+      "model": "MODEL",
+      "submodel": "SUBMODEL",
+      "body": "BODY_TYPE",
+      "displacement": "CC_RATING",
+      "power": "POWER_RATING",
+      "fuel": "MOTIVE_POWER",
+      "year": "VEHICLE_YEAR",
+      "transmission": "TRANSMISSION_TYPE",
+      "previous_country": "PREVIOUS_COUNTRY",
+      "import_status": "IMPORT_STATUS",
+      "engine_number": "ENGINE_NUMBER",
+      "vehicle_type": "VEHICLE_TYPE",
+      "vehicle_class": "CLASS"
+    },
+    "provenance": "official",
+    "provenance_note": "The column names are the published register extract's own, quoted exactly; the role names are this project's. No value of any field is stated here -- this table names fields, not what they may contain.",
+    "completeness": "partial",
+    "completeness_note": "Only the fields the matcher reads. The published extract carries more columns; a role absent from this table is one no decision consults, not one the register lacks.",
+    "source": "nzta_mvr_fields",
+    "source_kind": "first_party_data"
+  },
+  "identifiers": {
+    "description": "The register columns carrying a code that can identify a vehicle type, in the order they are compared and exported. Each declares what kind of code it is and what authority it carries, because those differ per register and the decision rules turn on them: only an authoritative identifier earns identity points or anchors a proposal, only a manufacturer-assigned one is expected to appear in a reference catalogue at all, and only a delimited code can be compared without decoding.",
+    "values": {
+      "VIN11": {
+        "kind": "vin",
+        "manufacturer_assigned": true,
+        "authoritative": true,
+        "expected_in_reference": true
+      },
+      "MVMA_MODEL_CODE": {
+        "kind": "manufacturer_model_code",
+        "manufacturer_assigned": true,
+        "authoritative": true,
+        "expected_in_reference": true
+      },
+      "CHASSIS7": {
+        "kind": "delimited_code",
+        "manufacturer_assigned": false,
+        "authoritative": true,
+        "expected_in_reference": false,
+        "note": "CHASSIS7 is defined as the first 7 characters of the chassis number, not as a model code, so its absence from the candidate set says nothing and must not withhold an otherwise well-evidenced match."
+      },
+      "INDUSTRY_MODEL_CODE": {
+        "kind": "delimited_code",
+        "manufacturer_assigned": false,
+        "authoritative": false,
+        "expected_in_reference": false,
+        "note": "NZTA calls INDUSTRY_MODEL_CODE a \"non-validated field used by vehicle manufacturers to describe model code on IMPORTED USED VEHICLES\". A field the publisher does not validate cannot carry veto or anchor authority, so it is compared and exported for audit but takes no part in conflicts, anchoring, identity points or proposals."
+      }
+    },
+    "provenance": "mixed",
+    "provenance_note": "The column names are the register's own, quoted exactly, and the INDUSTRY_MODEL_CODE note quotes NZTA verbatim. The kind and authority flags are this project's reading of what each field is, recorded here rather than hardcoded so that a register with different identifier fields states its own.",
+    "completeness": "partial",
+    "completeness_note": "The four identifier columns the 2020 extract carries. A register with other identifier fields declares them here; one with none declares an empty table, and identifier evidence is then simply unavailable.",
+    "source": "nzta_mvr_fields"
+  },
+  "registry_vehicle_types": {
+    "description": "Official NZTA vehicle types, and the body types valid for each. Keys are the wording the published register uses; codes are VIRM Table 2-2-8. Recorded as the source of truth for what these fields may contain. No correspondence with any reference catalogue is asserted here.",
+    "provenance": "official",
+    "source": "nzta_virm_attributes",
+    "note": "The register also emits 'HIGH SPEED AGRICULTURAL VEHICLE' (14 rows in 2020, bodies TRACTOR and OTHER AGRICULTURCAL), which Table 2-2-8 does not list.",
+    "values": {
+      "MOPED": {
+        "code": "01",
+        "body_types": [
+          "MOTORCYCLE"
+        ]
+      },
+      "TRAILER/CARAVAN": {
+        "code": "02",
+        "body_types": [
+          "BOAT TRAILER",
+          "CARAVAN",
+          "DOMESTIC TRAILER",
+          "FLAT-DECK TRAILER",
+          "OTHER COMMERCIAL TRAILER"
+        ]
+      },
+      "TRACTOR": {
+        "code": "03",
+        "body_types": [
+          "TRACTOR"
+        ]
+      },
+      "AGRICULTURAL MACHINE": {
+        "code": "04",
+        "body_types": [
+          "AG MACHINE - OTHER",
+          "OTHER AGRICULTURCAL"
+        ]
+      },
+      "TRAILER NOT DESIGNED FOR H/WAY USE": {
+        "code": "05",
+        "official_name": "Trailer not designed for highway use",
+        "body_types": [
+          "NON HIGHWAY TRAILER-OTHER"
+        ]
+      },
+      "MOBILE MACHINE": {
+        "code": "06",
+        "body_types": [
+          "MOBILE MACHINE"
+        ]
+      },
+      "PASSENGER CAR/VAN": {
+        "code": "07",
+        "body_types": [
+          "CONVERTIBLE",
+          "HATCHBACK",
+          "LIGHT VAN",
+          "SALOON",
+          "SPORTS CAR",
+          "STATION WAGON",
+          "UTILITY"
+        ]
+      },
+      "GOODS VAN/TRUCK/UTILITY": {
+        "code": "08",
+        "body_types": [
+          "ARTICULATED TRUCK",
+          "CAB AND CHASSIS ONLY",
+          "FLAT-DECK TRUCK",
+          "HEAVY VAN",
+          "LIGHT VAN",
+          "OTHER TRUCK",
+          "STATION WAGON",
+          "UTILITY"
+        ]
+      },
+      "BUS": {
+        "code": "09",
+        "body_types": [
+          "SERVICE COACH",
+          "MINIBUS"
+        ]
+      },
+      "MOTOR CARAVAN": {
+        "code": "10",
+        "body_types": [
+          "SELF PROPELLED CARAVAN",
+          "SERVICE COACH"
+        ]
+      },
+      "MOTORCYCLE": {
+        "code": "11",
+        "body_types": [
+          "MOTORCYCLE"
+        ]
+      },
+      "ATV": {
+        "code": "12",
+        "official_name": "All-terrain vehicle",
+        "body_types": [
+          "MOTORCYCLE"
+        ]
+      },
+      "SPECIAL PURPOSE VEHICLE": {
+        "code": "13",
+        "body_types": [
+          "CAB AND CHASSIS ONLY",
+          "MOBILE MACHINE",
+          "OTHER TRUCK"
+        ]
+      }
+    },
+    "completeness": "complete",
+    "completeness_note": "The whole of VIRM Table 2-2-8.",
+    "source_kind": "specification"
+  },
+  "registry_body_types": {
+    "description": "Official NZTA body types. Keys are the wording the published register uses; codes and official_name are VIRM Table 2-2-8. The table publishes 24 distinct body codes; there are 26 keys here because the register spells code OR three different ways (AG MACHINE - OTHER, OTHER AGRICULTURCAL, NON HIGHWAY TRAILER-OTHER). All 26 register spellings present in the 2020 register (181,790 rows) appear here, and each carries its published code.",
+    "provenance": "official",
+    "source": "nzta_virm_attributes",
+    "values": {
+      "CONVERTIBLE": {
+        "code": "CV",
+        "official_name": "Convertible"
+      },
+      "HATCHBACK": {
+        "code": "HA",
+        "official_name": "Hatchback"
+      },
+      "LIGHT VAN": {
+        "code": "LV",
+        "official_name": "Light van"
+      },
+      "SALOON": {
+        "code": "SL",
+        "official_name": "Saloon"
+      },
+      "SPORTS CAR": {
+        "code": "SP",
+        "official_name": "Sports car"
+      },
+      "STATION WAGON": {
+        "code": "SW",
+        "official_name": "Station wagon"
+      },
+      "UTILITY": {
+        "code": "UT",
+        "official_name": "Utility"
+      },
+      "ARTICULATED TRUCK": {
+        "code": "AT",
+        "official_name": "Articulated truck"
+      },
+      "CAB AND CHASSIS ONLY": {
+        "code": "CC",
+        "official_name": "Cab/chassis"
+      },
+      "FLAT-DECK TRUCK": {
+        "code": "FT",
+        "official_name": "Flat-deck truck"
+      },
+      "HEAVY VAN": {
+        "code": "HV",
+        "official_name": "Heavy van"
+      },
+      "OTHER TRUCK": {
+        "code": "OT",
+        "official_name": "Other truck"
+      },
+      "SERVICE COACH": {
+        "code": "HB",
+        "official_name": "Service coach / heavy bus",
+        "note": "Table 2-2-8 names code HB 'Service coach' under vehicle type 09 (Bus) and 'Heavy bus' under vehicle type 10 (Motor caravan); the register emits SERVICE COACH for both."
+      },
+      "MINIBUS": {
+        "code": "LB",
+        "official_name": "Mini bus"
+      },
+      "SELF PROPELLED CARAVAN": {
+        "code": "SC",
+        "official_name": "Self-propelled caravan"
+      },
+      "MOTORCYCLE": {
+        "code": "MC",
+        "official_name": "Motorcycle"
+      },
+      "BOAT TRAILER": {
+        "code": "TB",
+        "official_name": "Boat trailer"
+      },
+      "CARAVAN": {
+        "code": "TC",
+        "official_name": "Caravan"
+      },
+      "DOMESTIC TRAILER": {
+        "code": "TD",
+        "official_name": "Domestic trailer"
+      },
+      "FLAT-DECK TRAILER": {
+        "code": "TF",
+        "official_name": "Flat-deck trailer"
+      },
+      "OTHER COMMERCIAL TRAILER": {
+        "code": "TO",
+        "official_name": "Other commercial trailer"
+      },
+      "TRACTOR": {
+        "code": "TA",
+        "official_name": "Tractor"
+      },
+      "AG MACHINE - OTHER": {
+        "code": "OR",
+        "official_name": "Agricultural machine - Other"
+      },
+      "OTHER AGRICULTURCAL": {
+        "code": "OR",
+        "official_name": "Agricultural machine - Other",
+        "note": "Misspelling carried by the published register; recorded as published."
+      },
+      "NON HIGHWAY TRAILER-OTHER": {
+        "code": "OR",
+        "official_name": "Non-highway trailer - Other"
+      },
+      "MOBILE MACHINE": {
+        "code": "MM",
+        "official_name": "Mobile machine"
+      }
+    },
+    "completeness": "complete",
+    "completeness_note": "The whole of VIRM Table 2-2-8: all 24 published body codes, keyed by the 26 spellings the register emits for them.",
+    "source_kind": "specification"
+  },
+  "registry_vehicle_classes": {
+    "description": "Official NZTA vehicle classes: every class row of the VIRM 5-5 table, transcribed from docs/rule-sources/nz/nzta_virm_classes.md and carrying the published label and description verbatim. The table also holds five DEFINITION rows (Side-car, Passenger vehicle, Omnibus, Goods vehicle, Trailer) and a full-width note, which define supporting terms rather than classes and are not recorded here; they are in the stored reference. Keys are the code with spaces removed, which is how the register writes MD1-MD4; the published spelling is kept in published_label and code. LB1/LB2 and LE1/LE2 are described inside the LB and LE descriptions as variations, not given as separate class rows, so they are not recorded as separate classes.",
+    "provenance": "official",
+    "source": "nzta_virm_classes",
+    "values": {
+      "AA": {
+        "code": "AA",
+        "published_label": "AA (Pedal cycle)",
+        "description": "A vehicle designed to be propelled through a mechanism solely by human power."
+      },
+      "AB": {
+        "code": "AB",
+        "published_label": "AB (Power-assisted pedal cycle)",
+        "description": "A pedal cycle to which is attached one or more auxiliary propulsion motors having a combined maximum power output not exceeding 300 watts.\nFor further information go to the NZTA website:\nLow powered vehicles – more information"
+      },
+      "LA": {
+        "code": "LA",
+        "published_label": "LA (Moped with two wheels)*",
+        "description": "A motor vehicle (other than a power-assisted pedal cycle) that:\nhas two wheels; and\neither:\nhas an engine cylinder capacity not exceeding 50ml and a maximum speed not exceeding 50km/h; or\nhas a power source other than a piston engine and a maximum speed not exceeding 50km/h."
+      },
+      "LB": {
+        "code": "LB",
+        "published_label": "LB (Moped with three wheels)",
+        "description": "A motor vehicle (other than a power-assisted pedal cycle) that:\nhas three wheels; and\neither:\nhas an engine cylinder capacity not exceeding 50ml and a maximum speed not exceeding 50km/h; or\nhas a power source other than a piston engine and a maximum speed not exceeding 50km/h.\nAn LB 1 motor vehicle has one wheel at the front and two wheels at the rear. An LB 2 motor vehicle has two wheels at the front and one wheel at the rear."
+      },
+      "LC": {
+        "code": "LC",
+        "published_label": "LC (Motorcycle)",
+        "description": "A motor vehicle that:\nhas two wheels; and\neither:\nhas an engine cylinder capacity exceeding 50ml; or\nhas a maximum speed exceeding 50km/h."
+      },
+      "LD": {
+        "code": "LD",
+        "published_label": "LD (Motorcycle and side-car)",
+        "description": "A motor vehicle that:\nhas three wheels asymmetrically arranged in relation to the longitudinal median axis; and\neither:\nhas an engine cylinder capacity exceeding 50ml; or\nhas a maximum speed exceeding 50km/h."
+      },
+      "LE": {
+        "code": "LE",
+        "published_label": "LE (Motor tri-cycle)",
+        "description": "A motor vehicle that:\nhas three wheels symmetrically arranged in relation to the longitudinal median axis; and\nhas a gross vehicle mass not exceeding one tonne; and\neither:\nhas an engine cylinder capacity exceeding 50ml; or\nhas a maximum speed exceeding 50km/h.\nAn LE 1 motor vehicle has one wheel at the front and two wheels at the rear. An LE 2 motor vehicle has two wheels at the front and one wheel at the rear."
+      },
+      "MA": {
+        "code": "MA",
+        "published_label": "MA (Passenger car)",
+        "description": "A passenger vehicle (other than a class MB or class MC vehicle) that has not more than nine seating positions (including the driver's seating position)."
+      },
+      "MB": {
+        "code": "MB",
+        "published_label": "MB (Forward control passenger vehicle) (Note 3)",
+        "description": "A passenger vehicle (other than a class MC vehicle):\nthat has not more than nine seating positions (including the driver's seating position); and\nin which the centre of the steering wheel is in the forward quarter of the vehicle's total length."
+      },
+      "MC": {
+        "code": "MC",
+        "published_label": "MC (Off-road passenger vehicle)",
+        "description": "A passenger vehicle, designed with special features for off-road operation, that has not more than nine seating positions (including the driver's seating position), and that:\nhas four-wheel drive; and\nhas at least four of the following characteristics when the vehicle is unladen on a level surface and the front wheels are parallel to the vehicle's longitudinal centre-line and the tyres are inflated to the vehicle manufacturer's recommended pressure:\nan approach angle of not less than 28 degrees;\na breakover angle of not less than 14 degrees;\na departure angle of not less than 20 degrees;\na running clearance of not less than 200mm;\na front-axle clearance, rear-axle clearance or suspension clearance of not less than 175mm."
+      },
+      "MD": {
+        "code": "MD",
+        "published_label": "MD (Light omnibus)",
+        "description": "An omnibus that has a gross vehicle mass not exceeding 5 tonnes."
+      },
+      "MD1": {
+        "code": "MD 1",
+        "published_label": "MD 1 (Note 3)",
+        "description": "An omnibus that has a gross vehicle mass not exceeding 3.5 tonnes and not more than 12 seats.",
+        "register_code": "MD1"
+      },
+      "MD2": {
+        "code": "MD 2",
+        "published_label": "MD 2",
+        "description": "An omnibus that has a gross vehicle mass not exceeding 3.5 tonnes and more than 12 seats.",
+        "register_code": "MD2"
+      },
+      "MD3": {
+        "code": "MD 3",
+        "published_label": "MD 3",
+        "description": "An omnibus that has a gross vehicle mass exceeding 3.5 tonnes but not exceeding 4.5 tonnes.",
+        "register_code": "MD3"
+      },
+      "MD4": {
+        "code": "MD 4",
+        "published_label": "MD 4",
+        "description": "An omnibus that has a gross vehicle mass exceeding 4.5 tonnes but not exceeding 5 tonnes.",
+        "register_code": "MD4"
+      },
+      "ME": {
+        "code": "ME",
+        "published_label": "ME (Heavy omnibus)",
+        "description": "An omnibus that has a gross vehicle mass exceeding 5 tonnes."
+      },
+      "NA": {
+        "code": "NA",
+        "published_label": "NA (Light goods vehicle)",
+        "description": "A goods vehicle that has a gross vehicle mass not exceeding 3.5 tonnes."
+      },
+      "NB": {
+        "code": "NB",
+        "published_label": "NB (Medium goods vehicle)",
+        "description": "A goods vehicle that has a gross vehicle mass exceeding 3.5 tonnes but not exceeding 12 tonnes."
+      },
+      "NC": {
+        "code": "NC",
+        "published_label": "NC (Heavy goods vehicle)",
+        "description": "A goods vehicle that has a gross vehicle mass exceeding 12 tonnes."
+      },
+      "TA": {
+        "code": "TA",
+        "published_label": "TA (Very light trailer)",
+        "description": "A single-axled trailer that has a gross vehicle mass not exceeding 0.75 tonnes."
+      },
+      "TB": {
+        "code": "TB",
+        "published_label": "TB (Light trailer)",
+        "description": "A trailer (other than a class TA trailer) that has a gross vehicle mass not exceeding 3.5 tonnes."
+      },
+      "TC": {
+        "code": "TC",
+        "published_label": "TC (Medium trailer)",
+        "description": "A trailer that has a gross vehicle mass exceeding 3.5 tonnes but not exceeding 10 tonnes."
+      },
+      "TD": {
+        "code": "TD",
+        "published_label": "TD (Heavy trailer)",
+        "description": "A trailer that has a gross vehicle mass exceeding 10 tonnes."
+      }
+    },
+    "completeness": "complete",
+    "completeness_note": "All 23 class rows of the VIRM 5-5 table. The 2020 register emits 18 of them plus OTH, which is not a VIRM class; AA and AB are pedal cycles and never appear in a motor vehicle register. A vocabulary derived from that extract would have missed five.",
+    "source_kind": "specification"
+  },
+  "registry_motive_power": {
+    "description": "Official NZTA engine type / motive power (VIRM Table 2-2-9). Keys are the wording the published register uses where it emits one; code is the official code. Complete: the source table is the full enumeration, independent of any extract.",
+    "provenance": "official",
+    "source": "nzta_virm_attributes",
+    "completeness": "complete",
+    "completeness_note": "All 18 codes of Table 2-2-9, with the published Type name and Definition column verbatim from docs/rule-sources/nz/nzta_virm_attributes.md. The source merges the Definition cell with rowspan=2 across codes 07/08, 09/10, 11/12 and 13/14, so each pair shares one definition and both codes carry it here. Codes 01-04 and 06 have an empty Definition cell. Three codes (14, 17, 18) appear in no row of the 2020 register; a vocabulary derived from that extract would have missed them.",
+    "values": {
+      "PETROL": {
+        "code": "01"
+      },
+      "DIESEL": {
+        "code": "02"
+      },
+      "CNG": {
+        "code": "03"
+      },
+      "LPG": {
+        "code": "04"
+      },
+      "ELECTRIC": {
+        "code": "05",
+        "definition": "Electric motor/s only. The batteries are charged from an external source."
+      },
+      "OTHER": {
+        "code": "06"
+      },
+      "PETROL HYBRID": {
+        "code": "07",
+        "definition": "Propelled by either a petrol or diesel engine and an electric motor. No external source of charging for the battery.\nIncludes some 'mild hybrids' if the system provides propulsion to the wheels (eg torque assist).\nNot included are systems that do not provide propulsion to the wheels (eg engine stop/start, or electricity to other components such as power steering)."
+      },
+      "DIESEL HYBRID": {
+        "code": "08",
+        "definition": "Propelled by either a petrol or diesel engine and an electric motor. No external source of charging for the battery.\nIncludes some 'mild hybrids' if the system provides propulsion to the wheels (eg torque assist).\nNot included are systems that do not provide propulsion to the wheels (eg engine stop/start, or electricity to other components such as power steering)."
+      },
+      "PETROL ELECTRIC HYBRID": {
+        "code": "09",
+        "official_name": "Electric hybrid petrol",
+        "definition": "Propelled by an electric motor where the battery is charged from an onboard petrol or diesel generator not directly connected to the drive wheels but no external source of electricity to charge the battery."
+      },
+      "DIESEL ELECTRIC HYBRID": {
+        "code": "10",
+        "official_name": "Electric hybrid diesel",
+        "definition": "Propelled by an electric motor where the battery is charged from an onboard petrol or diesel generator not directly connected to the drive wheels but no external source of electricity to charge the battery."
+      },
+      "PLUGIN PETROL HYBRID": {
+        "code": "11",
+        "official_name": "Plug-in petrol hybrid",
+        "definition": "Propelled by either a petrol or diesel motor and electric motor. The batteries can be externally charged."
+      },
+      "PLUGIN DIESEL HYBRID": {
+        "code": "12",
+        "official_name": "Plug-in diesel hybrid",
+        "definition": "Propelled by either a petrol or diesel motor and electric motor. The batteries can be externally charged."
+      },
+      "ELECTRIC [PETROL EXTENDED]": {
+        "code": "13",
+        "official_name": "Electric (petrol extended)",
+        "definition": "Propelled by an electric motor where the battery is charged from an onboard petrol or diesel generator not directly connected to the drive wheels and an external source of electricity."
+      },
+      "ELECTRIC [DIESEL EXTENDED]": {
+        "code": "14",
+        "official_name": "Electric (diesel extended)",
+        "definition": "Propelled by an electric motor where the battery is charged from an onboard petrol or diesel generator not directly connected to the drive wheels and an external source of electricity.",
+        "note": "Not present in the 2020 register."
+      },
+      "ELECTRIC FUEL CELL HYDROGEN": {
+        "code": "15",
+        "official_name": "Electric hydrogen fuel cell",
+        "definition": "Propelled by an electric motor/s. Electricity is sourced from a hydrogen fuel cell."
+      },
+      "ELECTRIC FUEL CELL OTHER": {
+        "code": "16",
+        "official_name": "Electric other fuel cell",
+        "definition": "Propelled by an electric motor/s. Electricity is sourced from a fuel cell other than hydrogen."
+      },
+      "PLUG IN FUEL CELL HYDROGEN HYBRID": {
+        "code": "17",
+        "official_name": "Plug-in fuel cell hydrogen hybrid",
+        "definition": "Propelled by an electric motor/s. Electricity is sourced from a hydrogen fuel cell and a battery that can be charged from an external source.",
+        "note": "Not present in the 2020 register."
+      },
+      "PLUG IN FUEL CELL OTHER HYBRID": {
+        "code": "18",
+        "official_name": "Plug-in fuel cell other hybrid",
+        "definition": "Propelled by an electric motor/s. Electricity is sourced from a fuel cell other than hydrogen and a battery that can be charged from an external source.",
+        "note": "Not present in the 2020 register."
+      }
+    },
+    "alternative_fuel_system": {
+      "CNG": {
+        "code": "03"
+      },
+      "LPG": {
+        "code": "04"
+      }
+    },
+    "source_kind": "specification"
+  },
+  "submodel_drive": {
+    "description": "Drive tokens written in the NZ registration SUBMODEL string, mapped to the internal drive category. NZTA states that \"Sub-model is free text and is not validated\" and the register defines no drive-type attribute, so nothing here is an NZTA code list; every token is instead grounded on the reference side, against TecDoc KT 082 and its synonym table 147. FD is deliberately absent: it sits in the gearbox slot, never co-occurs with a gearbox token, appears only on electric vehicles, and appears alongside an explicit 4WD on dual-motor Teslas, so it denotes a fixed single-speed reduction rather than front-wheel drive.",
+    "values": {
+      "4WD": "awd",
+      "4X4": "awd",
+      "4-MATIC": "awd",
+      "ALL MODE 4X4-I": "awd",
+      "AWD": "awd",
+      "FWD": "fwd",
+      "RWD": "rwd"
+    },
+    "provenance": "correspondence",
+    "provenance_note": "Two kinds of grounding, no third. STATED: 4WD, 4X4, 4-MATIC and ALL MODE 4X4-I are paired with All-wheel Drive, and FWD with Front-Wheel Drive, by TecAlliance's own synonym table 147 in the supplied extract. INITIALISM: AWD and RWD are the initials of the KT 082 values 'All-wheel Drive' and 'Rear-Wheel Drive' as the extract spells them -- the same convention table 147 itself uses when it states FWD for 'Front-Wheel Drive'. Nothing else is recorded. 2WD and 2X4 were removed: KT 082 has no two-wheel-drive value, so no catalogue statement can ground either the agreement they claimed with Front- and Rear-Wheel Drive or the contradiction they raised against All-wheel Drive.",
+    "completeness": "partial",
+    "completeness_note": "Free-text tokens; no source enumerates what a submodel may contain. Bounded on the reference side instead: a token is recorded only where KT 082 or table 147 gives it a canonical value, so the vocabulary cannot outgrow the key table it is compared against.",
+    "source_only_tokens": {
+      "description": "Drive tokens the register writes that are recognised in the text but carry NO reference category, because TecDoc KT 082 states no two-wheel-drive value for them to be compared against. They are read for one purpose only: a SUBMODEL naming both a two-wheel and an all-wheel drive contradicts itself, which is a statement about the source text and needs no reference catalogue to make. Against a candidate they yield nothing -- no agreement, no veto -- so they can neither earn points nor eliminate a rival.",
+      "tokens": [
+        "2WD",
+        "2X4"
+      ],
+      "contradicts_category": "awd",
+      "search_note": "Searched for before removing the correspondence, not assumed absent. '2WD', '2X4', 'two-wheel' and 'two wheel' appear: nowhere in the supplied RDM extract (whose only drive wording is the three Drive_system values and the four Drive_system_synonym values); nowhere in the 207-page TecDoc Data Format spec, which names the field Drive type / AntrArt and points at KT 082 but prints no drive value at all, not even 'All-wheel Drive'; and nowhere in the NZTA VIRM tables, the VIRM definitions and abbreviations page, or the MVR field list, which defines no drive attribute (NUMBER_OF_AXLES is the only related field). The tokens do occur in the register's own SUBMODEL free text -- 2,509 rows of 130,650 in 2020 carry '2WD', none carry '2X4' -- but VIRM 2-1 section 10 states that sub-model is free text and is not validated, so their presence there records what a clerk typed, not what it corresponds to."
+    },
+    "free_text_source": "nzta_virm_recording_attributes",
+    "categories": "drive"
+  },
+  "registry_submodel_fuel": {
+    "values": {
+      "PETROL": [
+        "petrol",
+        false
+      ],
+      "DIESEL": [
+        "diesel",
+        false
+      ],
+      "PETROL HYBRID": [
+        "petrol",
+        true
+      ],
+      "DIESEL HYBRID": [
+        "diesel",
+        true
+      ],
+      "ELECTRIC": [
+        "electric",
+        false
+      ]
+    },
+    "description": "Register fuel labels reduced to the fuel family and hybrid flag a SUBMODEL reading can corroborate. See categories.json.",
+    "provenance": "correspondence",
+    "provenance_note": "Keys are register MOTIVE_POWER values and RDM Fuel_type values, quoted exactly; the fuel family and hybrid flag are this project's reduction of them. No token is recorded that neither catalogue emits.",
+    "completeness": "partial",
+    "completeness_note": "Free-text tokens; no source enumerates what a submodel may contain.",
+    "free_text_source": "nzta_virm_recording_attributes",
+    "categories": "fuel_family",
+    "source": "nzta_mvr_fields",
+    "decomposed_from": "Decomposed from submodel_fuel on the same split as source_fuel: this section keeps only the keys the register emits; the other side is stated by catalogue_submodel_fuel in its own file. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
+    "inherited_description": "MOTIVE_POWER labels reduced to the fuel family and hybrid flag that the SUBMODEL text can corroborate. Narrower than source_fuel on purpose: this only has to answer 'does the SUBMODEL text contradict the structured field', so gas blends have no entry."
+  },
+  "cab_configurations": {
+    "description": "Cab configuration written in the NZ registration SUBMODEL string, read so that the parse is reported in the audit trail. It carries no body restriction and no veto. It previously excluded PICKUP for a single/regular cab on the strength of a Holden RG/RGII Colorado model-lineup specification, which is not an NZTA, TecAlliance or RDM source and could not be produced for review; the RDM itself carries no cab column, so the restriction cannot be grounded in the supplied sources and was removed. Removing it changed no outcome on the supplied catalogue pair.",
+    "tokens": {
+      "RC": "single",
+      "SC": "single",
+      "SINGLE CAB": "single",
+      "REGULAR CAB": "single",
+      "DC": "double",
+      "DUAL CAB": "double",
+      "DOUBLE CAB": "double",
+      "CREW CAB": "double",
+      "KC": "extended",
+      "EC": "extended",
+      "SUPER CAB": "extended",
+      "EXTRA CAB": "extended",
+      "KING CAB": "extended",
+      "FREESTYLE CAB": "extended"
+    },
+    "excluded_tokens": {
+      "description": "Tokens that look like cab codes but are not. CC and C/C are Cab Chassis, a body descriptor written in the slot after the cab, as in SC/CC, DC/CC and EC/CC. Reading CC as Crew Cab both invents a contradiction on rows like 'LS EC CC' and inverts the body evidence, since the text is stating a chassis while the rule would infer a pickup.",
+      "values": [
+        "CC",
+        "C/C"
+      ]
+    },
+    "provenance": "dataset_derived",
+    "provenance_note": "Cab wording observed in SUBMODEL free text and recorded for the audit trail only. No correspondence with any reference structure is asserted.",
+    "completeness": "partial",
+    "completeness_note": "Free-text tokens; no source enumerates what a submodel may contain. Nothing downstream depends on the list being complete, because no decision reads it.",
+    "free_text_source": "nzta_virm_recording_attributes",
+    "categories": "cab"
+  },
+  "registry_fuel": {
+    "values": {
+      "PETROL": "petrol",
+      "DIESEL": "diesel",
+      "ELECTRIC": "electric",
+      "PETROL HYBRID": "petrol_hybrid",
+      "PETROL ELECTRIC HYBRID": "petrol_hybrid",
+      "PLUGIN PETROL HYBRID": "petrol_hybrid",
+      "DIESEL HYBRID": "diesel_hybrid",
+      "DIESEL ELECTRIC HYBRID": "diesel_hybrid",
+      "PLUGIN DIESEL HYBRID": "diesel_hybrid",
+      "LPG": "lpg",
+      "CNG": "cng"
+    },
+    "description": "Register fuel labels, mapped into the neutral fuel categories. See categories.json.",
+    "provenance": "correspondence",
+    "provenance_note": "The labels are the two catalogues' own, quoted exactly; the internal category names are this project's. No key is recorded that neither catalogue emits: a Petrol/CNG blend was removed because the register has no such MOTIVE_POWER value and the RDM has no such Fuel_type.",
+    "completeness": "partial",
+    "completeness_note": "Covers 11 of the 18 official NZTA motive power values and all 6 RDM fuel types; the remaining NZTA values have no internal category and compare as unknown.",
+    "categories": "fuel",
+    "source": "nzta_mvr_fields",
+    "decomposed_from": "Decomposed from source_fuel, one dict whose keys were both register MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. This section keeps only the keys the register emits; the other side is stated by catalogue_fuel in its own file, and the two meet only in categories.json. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
+    "inherited_description": "NZTA MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. Every key is a string one of the two catalogues actually emits: the register's MOTIVE_POWER values (see nzta_motive_power) and the extract's Fuel_type values (see tecdoc_fuel). NZTA defines MOTIVE_POWER as the primary fuel source and records hybrids in it directly, so ALTERNATIVE_MOTIVE_POWER is not consulted: it is populated on 22 of 181,790 rows in the 2020 cohort, and on 19 of those it names a gas blend rather than the hybrid, which MOTIVE_POWER already carries. Plug-in and non-plug-in hybrids share one category because the reference vocabulary does not separate them; a reference listing both would tie and go to review rather than pick one. LPG and CNG are their own categories, distinct from the reference's combined Petrol/LPG, so the two disagree rather than falsely agreeing. Fuel-cell, range-extender and OTHER labels are deliberately absent: they have no reference counterpart, and unknown withholds acceptance whereas a guess could grant it."
+  },
+  "registry_bodies": {
+    "values": {
+      "SALOON": "saloon",
+      "CONVERTIBLE": "convertible"
+    },
+    "description": "Register body types, mapped into the neutral body categories. See categories.json.",
+    "provenance": "correspondence",
+    "provenance_note": "Name identity only. A registration body is paired with a reference structure solely where the two publishers print the same word: NZTA VIRM Table 2-2-8 names body SL 'Saloon' and CV 'Convertible', and TecDoc KT 086 states 'Saloon' and 'Convertible' in the supplied extract. A reviewer can check both sides. Nothing else is paired. The judged correspondences this table used to carry -- STATION WAGON to Estate/SUV/Closed Off-Road Vehicle, SPORTS CAR to Coupe/Convertible/Saloon, UTILITY to Pickup/Platform/Chassis -- were removed: no publisher states them, and the two taxonomies are independent, so they were this project's judgement presented as vocabulary.",
+    "completeness": "partial",
+    "completeness_note": "Covers the 2 of 26 official NZTA body types whose published name also appears verbatim in the reference extract's KT 086 values. Extending it beyond name identity needs a published correspondence between the NZTA and TecDoc body taxonomies; KT 086 alone would not supply one.",
+    "categories": "body",
+    "source": "nzta_virm_attributes",
+    "decomposed_from": "Decomposed from registration_bodies, which mapped a registry body directly onto a reference structure. Each side now maps its own publisher's value into the neutral body category instead, so registry_bodies states only NZTA VIRM Table 2-2-8 values and catalogue_structures states the other side, in its own file. The pairing recorded was name identity, so the category is that shared name; nothing new is asserted, and each side is now checkable against its own publisher without reading the other. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
+    "inherited_description": "Registration body to reference structure, for the candidate body comparison. One registration term may legitimately cover several technical layouts, but this table records a pairing only where both publishers use the same name, so it covers 2 of the 26 NZTA body types. Everything else compares as unknown, which earns no points and vetoes nothing."
+  },
+  "import_context": {
+    "description": "Register values that describe how a vehicle entered the fleet. Read only for context reported to a reviewer: they earn no points, veto nothing and select no candidate. The adjective is recorded alongside the value so the reviewer note reads in this register's own words rather than in a generated approximation of them.",
+    "values": {
+      "used_import_status": "USED",
+      "corroborating_previous_country": "JAPAN",
+      "corroborating_previous_country_adjective": "Japanese"
+    },
+    "provenance": "dataset_derived",
+    "provenance_note": "Observed in the register extract. The MVR field descriptions define IMPORT_STATUS and PREVIOUS_COUNTRY but enumerate no values for either, so these two are recorded as values the data states, not as a published code list. Which previous country corroborates an import is this project's reading of this fleet, where used Japanese imports are the case the note was written for.",
+    "completeness": "partial",
+    "completeness_note": "Two values, both read for the audit note only. Closing the list needs a published vocabulary for IMPORT_STATUS and PREVIOUS_COUNTRY; nothing downstream depends on it being complete, because no decision reads it."
+  },
+  "submodel_body_families": {
+    "description": "The register body value each SUBMODEL body family corresponds to, for the check that asks whether the free text contradicts the structured body field. Registry-internal: both sides are this register's own, so no reference catalogue is named and no structure is asserted.",
+    "values": {
+      "station_wagon": "STATION WAGON"
+    },
+    "provenance": "correspondence",
+    "provenance_note": "Name identity within one register: the SUBMODEL family a reviewed profile parses, paired with the published body type of the same name. A family absent here cannot be checked against the body field and compares as unknown.",
+    "completeness": "partial",
+    "completeness_note": "The one body family the SUBMODEL profiles parse today. It grows with the profiles, not with the register.",
+    "source": "nzta_virm_attributes",
+    "free_text_source": "nzta_virm_recording_attributes"
+  },
+  "report_notes": {
+    "description": "Assumptions the performance report must state because they are this register's, not the matcher's. Printed verbatim in the Evaluation limits section; a registry that declares none prints none.",
+    "values": [
+      "NZTA defines VEHICLE_YEAR as \"year of manufacture or model year - if unknown, year of first registration\". No field distinguishes the three, so a year earlier than production start blocks acceptance (impossible under every reading) while a later year stays eligible (legitimate under the first-registration reading) with its lag exported. Missing end dates are open-ended.",
+      "7AT VINs are not manufacturer-code or production-year evidence. PREVIOUS_COUNTRY and IMPORT_STATUS supply context, not score bonuses."
+    ],
+    "provenance": "mixed",
+    "provenance_note": "The VEHICLE_YEAR definition is quoted verbatim from the MVR field descriptions; the reading drawn from it, and the 7AT note, are this project's. Both were previously written into the report generator, where a second register would have had them printed about itself.",
+    "completeness": "partial",
+    "completeness_note": "The two assumptions the report states about this register. It is a list of notes, not a vocabulary, so nothing downstream depends on it being complete.",
+    "source": "nzta_mvr_fields"
+  }
+}

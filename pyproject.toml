@@ -1,0 +1,62 @@
+[project]
+name = "tecalliance-vio-mapper"
+version = "1.0.0"
+description = "Evidence-based kType mapping for the New Zealand vehicle register"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openpyxl>=3.1.5",
+    "pandas>=2.2",
+]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+vio-mapper = "vio_mapper.cli:main"
+vio-mapper-ui = "webapp.__main__:main"
+
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.18",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "fastapi>=0.115",
+    "httpx2>=0.28",
+    "python-multipart>=0.0.18",
+    "uvicorn[standard]>=0.32",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vio_mapper*", "webapp*"]
+
+[tool.setuptools.package-data]
+vio_mapper = [
+    "rules/*.json",
+    "rules/catalogues/*.json",
+    "rules/registries/*.json",
+]
+webapp = [
+    "frontend/*.html",
+    "frontend/*.js",
+    "frontend/*.css",
+]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["vio_mapper", "webapp"]

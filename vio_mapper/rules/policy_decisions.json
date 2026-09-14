@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "description": "Provisional policy defaults and proposed responsibility. Engineering recommends retaining the reviewed baseline for an expert-reviewed pilot. Business risk approval and authoritative data corrections belong to the data owner; this register is not evidence of company approval. Values match the running policy; rationales are not calibration.",
+  "columns": {
+    "decided_by": "data_owner (a claim only TecAlliance and NZTA can settle) or engineering (a property of the implementation, measurable here).",
+    "basis": "derived (follows from something stated or measurable), judgement (a reasoned choice, not fitted), or unfitted (a plausible value never tested against anything).",
+    "affects_acceptance": "Whether changing it can change which vehicles are assigned. Settings that cannot are declared anyway, so that a future change of role is visible.",
+    "rationale": "Why the current value stands, and what a reviewer would need in order to change it.",
+    "cli_flag": "How to override it for one run, where the command line exposes it."
+  },
+  "settings": {
+    "power_tolerance_pct": {
+      "default": 0.0,
+      "decided_by": "data_owner",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": "--power-tolerance-pct",
+      "rationale": "Exact agreement is the provisional default. A non-zero allowance makes power near, not exact evidence; dominance still requires power agreement. Measurement tolerances do not establish a valid cross-catalogue tolerance. No discrepancy cause or accuracy gain is inferred."
+    },
+    "power_triage_kw": {
+      "default": 1.0,
+      "decided_by": "engineering",
+      "basis": "judgement",
+      "affects_acceptance": false,
+      "cli_flag": "--power-triage-kw",
+      "rationale": "A one-kW gap is used as a review-priority heuristic for integer power fields. It is consistent with some differing rounding conventions, but the data does not establish how each publisher rounded its value. This flag never changes compatibility or acceptance."
+    },
+    "accept_score": {
+      "default": 35.0,
+      "decided_by": "data_owner",
+      "basis": "unfitted",
+      "affects_acceptance": true,
+      "cli_flag": "--accept-score",
+      "rationale": "Used only by the retained diagnostic score selector; ignored for acceptance under the default dominance selector. The configured value is provisional and not calibrated."
+    },
+    "min_margin": {
+      "default": 12.0,
+      "decided_by": "data_owner",
+      "basis": "unfitted",
+      "affects_acceptance": true,
+      "cli_flag": "--min-margin",
+      "rationale": "Used only by the retained diagnostic score selector, on the scale defined by the current group caps. Exact ties require review. The configured value is provisional and uncalibrated."
+    },
+    "year_mode": {
+      "default": "soft",
+      "decided_by": "data_owner",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": "--year-mode",
+      "rationale": "NZTA defines VEHICLE_YEAR as year of manufacture or model year, or year of first registration where those are unknown, and no field says which of the three a row carries. Under soft, registration after production end stays eligible -- correct for a used import first registered years after manufacture, wrong for a vehicle genuinely built that year. Only the data owner knows which reading the register supports."
+    },
+    "year_weight": {
+      "default": 5.0,
+      "decided_by": "data_owner",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": null,
+      "rationale": "Points awarded where the registration year falls inside the production interval. Deliberately small: an overlap is consistent with every candidate built at the time and so is weak evidence. Capped by the temporal group cap in scoring.json. Diagnostic only under dominance and rules-only."
+    },
+    "field_weights": {
+      "default": "vio_mapper/rules/scoring.json",
+      "decided_by": "data_owner",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": null,
+      "rationale": "Uncalibrated diagnostic support values and group caps live in scoring.json. They affect weighted selection, not dominance or rules-only. The attribute groups are informed by Annex I; engine-code agreement is a proxy, and neither the weights nor ranking follows from that regulation."
+    },
+    "use_identifiers": {
+      "default": true,
+      "decided_by": "engineering",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": "--no-identifiers",
+      "rationale": "Whether structural codes (VIN11, MVMA, CHASSIS7) contribute identity evidence and their conflict checks. Provided as an ablation so the contribution of the identifier path can be measured rather than assumed; disabling it is a sensitivity analysis, not a policy an owner would choose."
+    },
+    "use_vin_helper": {
+      "default": true,
+      "decided_by": "engineering",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": "--no-vin-helper",
+      "rationale": "Reviewed VIN layouts contribute generation, drive and engine comparisons. These can block candidates as well as corroborate them. Disabling structural identifiers disables this helper too."
+    },
+    "use_scoring": {
+      "default": true,
+      "decided_by": "engineering",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": "--rules-only",
+      "rationale": "When enabled, the selection setting chooses dominance or the diagnostic weighted score. When disabled, rules-only behavior is used. Dominance uses no weighted total for acceptance; alternatives exist for sensitivity measurement only."
+    },
+    "evidence": {
+      "default": "all",
+      "decided_by": "engineering",
+      "basis": "judgement",
+      "affects_acceptance": false,
+      "cli_flag": "--evidence",
+      "rationale": "How much of the candidate audit trail is written out. Never consulted by any decision; it changes the size of the workbook and nothing else."
+    },
+    "reuse_identical_rows": {
+      "default": true,
+      "decided_by": "engineering",
+      "basis": "derived",
+      "affects_acceptance": false,
+      "cli_flag": null,
+      "rationale": "Decide each distinct decision key once and replay it for every row that shares it. Pure caching: sound only while pipeline.decision_key covers every column a decision reads, which tests/test_pipeline.py enforces."
+    },
+    "selection": {
+      "default": "dominance",
+      "decided_by": "data_owner",
+      "basis": "judgement",
+      "affects_acceptance": true,
+      "cli_flag": "--selection",
+      "rationale": "Dominance is the recommended provisional default for an expert-reviewed pilot. It compares agreement sets without score weights, caps, thresholds or margins. Version precedence, the sibling brake, at least one variant agreement and identifier guards are engineering judgments informed by Annex I attribute groups, not an algorithm mandated by the regulation. Candidate-pool composition and missing fields still affect outcomes."
+    }
+  }
+}

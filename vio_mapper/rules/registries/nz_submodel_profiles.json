@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "description": "Dataset-scoped SUBMODEL parsing profiles. A make/model pair without a profile here is not parsed at all: its tokens are reported as unparsed rather than interpreted by rules that were never reviewed for it. These are explicit interpretations of formats present in the supplied files, not an external trim catalogue.",
+  "profiles": [
+    {
+      "make": "NISSAN",
+      "model": "X-TRAIL",
+      "id": "nissan_xtrail",
+      "marketing_trims": [
+        "ST"
+      ]
+    },
+    {
+      "make": "HYUNDAI",
+      "model": "KONA",
+      "id": "hyundai_kona",
+      "marketing_trims": [
+        "ELITE"
+      ]
+    },
+    {
+      "make": "HYUNDAI",
+      "model": "TUCSON",
+      "id": "hyundai_tucson",
+      "marketing_trims": [
+        "LIMITED"
+      ]
+    },
+    {
+      "make": "FORD",
+      "model": "RANGER",
+      "id": "ford_ranger",
+      "marketing_trims": [
+        "WILDTRAK"
+      ]
+    },
+    {
+      "make": "HOLDEN",
+      "model": "COLORADO",
+      "id": "holden_colorado",
+      "marketing_trims": [
+        "LS"
+      ]
+    },
+    {
+      "make": "MERCEDES-BENZ",
+      "model": "C-CLASS",
+      "id": "mercedes_cclass",
+      "marketing_trims": []
+    }
+  ]
+}

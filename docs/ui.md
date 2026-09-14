@@ -1,0 +1,22 @@
+# Local review UI
+
+The optional browser interface demonstrates the same mapping and review workflow as
+the CLI. Start it with `uv sync --extra web` followed by `uv run vio-mapper-ui`, then
+open `http://127.0.0.1:8000`.
+
+The interface lets a reviewer:
+
+- upload an authorized registry workbook or delimited file;
+- inspect accepted and unresolved totals;
+- review grouped questions and candidate-level evidence;
+- inspect rule and audit information; and
+- download the generated workbook.
+
+It deliberately exposes one documented decision policy. Alternative thresholds and
+diagnostic selectors are not browser controls, so a presentation run cannot silently
+use settings different from the submitted result.
+
+The UI is a local demonstration, not a deployed service. Runs are temporary, retained
+only in process memory and local temporary directories, and limited to 20,000 source
+rows. The proprietary reference workbook remains on the local machine under `data/`
+and is never served as a download.

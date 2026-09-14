@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "description": "Value vocabularies. Three axes, declared per section. PROVENANCE: \"official\" (a publisher's own vocabulary), \"correspondence\" (an asserted equivalence between two taxonomies), or \"dataset_derived\" (inferred from supplied data). SOURCE_KIND, on official sections: \"specification\" (a published table that closes the vocabulary) or \"first_party_data\" (a publisher's own extract, authoritative for the values it states but silent on where the table ends). COMPLETENESS: \"complete\", \"partial\", or \"unverified\".",
+  "scope": "The TecAlliance reference catalogue: the key-table values the supplied RDM extract states, and their internal categories. Survives a change of country: the key tables are TecAlliance-global, and a wider extract adds values without rewriting the file.",
+  "sources": {
+    "tecdoc_data_format": {
+      "title": "TecDoc Data Format, Version 2.7 (document 2.0.31, 26/01/2026)",
+      "url": "https://dwnld.aws.tecalliance.com/TecDoc/Downloads/TecDoc-Data-Format.pdf",
+      "scope": "Defines the Key Tables that standardise vehicle attributes -- KT 086 body type, KT 082 drive type, KT 182 fuel type, KT 097 fuel mixture formation -- and the synonym tables 146 and 147. The permitted values themselves are delivered as data in tables 051, 052 and 030, not printed in this document; confirmed by inspection of all 207 pages.",
+      "accessed": "2026-09-12",
+      "redistribution_note": "The supplied TecDoc PDF is proprietary and is not included in this repository."
+    },
+    "tecdoc_rdm_export": {
+      "title": "RDM_CARPARK_NZ_20250801 — TecAlliance reference data extract",
+      "url": "supplied with this project as data/RDM_CARPARK_NZ_20250801_subset.xlsx",
+      "scope": "A first-party TecAlliance document, and the authority for the reference side of every vocabulary below. Its columns are TecDoc key table descriptions denormalised onto each kType: Kind_of_structure is KT 086, Drive_system is KT 082, Fuel_type is KT 182, and Structure_synonym / Drive_system_synonym carry tables 146 and 147. Values read from it are TecAlliance's own; what it cannot show is where each key table ends.",
+      "accessed": "2026-09-12",
+      "local_copy": "data/RDM_CARPARK_NZ_20250801_subset.xlsx",
+      "sha256": "677e15d071512f422e92ec461d02e295cffd46e19caf5148fde3f5377844f7ef"
+    }
+  },
+  "tecdoc_drive": {
+    "description": "TecDoc drive type values, read from the Drive_system column of the supplied TecAlliance reference extract. These are TecAlliance's own values, not an interpretation of them.",
+    "provenance": "official",
+    "source_kind": "first_party_data",
+    "source": "tecdoc_rdm_export",
+    "reference_column": "Drive_system",
+    "completeness": "partial",
+    "completeness_note": "Every drive type the supplied extract contains. It is a 365-kType NZ carpark slice, so the KT 082 certainly defines more. Closing it needs that key table; until then a value absent here is unknown, not impossible.",
+    "values": [
+      "All-wheel Drive",
+      "Front-Wheel Drive",
+      "Rear-Wheel Drive"
+    ],
+    "key_table": "KT 082",
+    "synonym_table": "147 Drive Type Synonyms",
+    "synonyms": {
+      "4-MATIC": "All-wheel Drive",
+      "4WD": "All-wheel Drive",
+      "4X4": "All-wheel Drive",
+      "ALL MODE 4X4-I": "All-wheel Drive",
+      "FWD": "Front-Wheel Drive"
+    },
+    "synonym_note": "Table 147 is keyed per model series, so a synonym exists only where a manufacturer uses a marketing term. Sparse is correct, not truncated -- and it means synonyms can never reconstruct the key table, only annotate it.",
+    "key_table_source": "tecdoc_data_format"
+  },
+  "tecdoc_structure": {
+    "description": "TecDoc body type values, read from the Kind_of_structure column of the supplied TecAlliance reference extract. These are TecAlliance's own values, not an interpretation of them.",
+    "provenance": "official",
+    "source_kind": "first_party_data",
+    "source": "tecdoc_rdm_export",
+    "reference_column": "Kind_of_structure",
+    "completeness": "partial",
+    "completeness_note": "Every body type the supplied extract contains. It is a 365-kType NZ carpark slice, so the KT 086 certainly defines more. Closing it needs that key table; until then a value absent here is unknown, not impossible.",
+    "values": [
+      "Closed Off-Road Vehicle",
+      "Convertible",
+      "Coupe",
+      "Estate",
+      "MPV",
+      "Pickup",
+      "Platform/Chassis",
+      "SUV",
+      "Saloon"
+    ],
+    "key_table": "KT 086",
+    "synonym_table": "146 Body Type Synonyms",
+    "synonyms": {
+      "T-MODEL": "Estate"
+    },
+    "synonym_note": "Table 146 is keyed per model series, so a synonym exists only where a manufacturer uses a marketing term. Sparse is correct, not truncated -- and it means synonyms can never reconstruct the key table, only annotate it.",
+    "key_table_source": "tecdoc_data_format"
+  },
+  "tecdoc_fuel": {
+    "description": "TecDoc fuel type values, read from the Fuel_type column of the supplied TecAlliance reference extract. These are TecAlliance's own values, not an interpretation of them.",
+    "provenance": "official",
+    "source_kind": "first_party_data",
+    "source": "tecdoc_rdm_export",
+    "reference_column": "Fuel_type",
+    "completeness": "partial",
+    "completeness_note": "Every fuel type the supplied extract contains. It is a 365-kType NZ carpark slice, so the KT 182 certainly defines more. Closing it needs that key table; until then a value absent here is unknown, not impossible.",
+    "values": [
+      "Diesel",
+      "Diesel/Electro",
+      "Electric",
+      "Petrol",
+      "Petrol/Electric",
+      "Petrol/Liquified Petroleum Gas (LPG)"
+    ],
+    "key_table": "KT 182",
+    "key_table_source": "tecdoc_data_format"
+  },
+  "tecdoc_engine_kind": {
+    "description": "TecDoc kind of engine values, read from the Kind_of_engine column of the supplied TecAlliance reference extract. These are TecAlliance's own values, not an interpretation of them.",
+    "provenance": "official",
+    "source_kind": "first_party_data",
+    "source": "tecdoc_rdm_export",
+    "reference_column": "Kind_of_engine",
+    "completeness": "partial",
+    "completeness_note": "Every kind of engine the supplied extract contains. It is a 365-kType NZ carpark slice, so the governing key table certainly defines more. Closing it needs that key table; until then a value absent here is unknown, not impossible.",
+    "values": [
+      "Diesel",
+      "Electric Motor",
+      "Full Hybrid",
+      "Mild Hybrid",
+      "Petrol Engine",
+      "Plug-In Hybrid",
+      "Range Extender"
+    ],
+    "key_table_note": "Not asserted. The cited spec's nearest candidate is KT 080 'Engine type' (Motorart), but the spec never names a column matching the extract's Kind_of_engine, so no key table number is claimed for it.",
+    "key_table_source": "tecdoc_data_format"
+  },
+  "tecdoc_mixture_preparation": {
+    "description": "TecDoc mixture preparation values, read from the Mixture_preperation column of the supplied TecAlliance reference extract. These are TecAlliance's own values, not an interpretation of them.",
+    "provenance": "official",
+    "source_kind": "first_party_data",
+    "source": "tecdoc_rdm_export",
+    "reference_column": "Mixture_preperation",
+    "completeness": "partial",
+    "completeness_note": "Every mixture preparation the supplied extract contains. It is a 365-kType NZ carpark slice, so KT 097 certainly defines more. Closing it needs that key table; until then a value absent here is unknown, not impossible.",
+    "values": [
+      "Direct Injection",
+      "Intake Manifold Injection/ Carburettor",
+      "Manifold Injection/Direct Injection",
+      "Prechamber Engine"
+    ],
+    "key_table": "KT 097",
+    "key_table_note": "TecDoc Data Format v2.7 lists the field FuelMixForm (Kraftstoffaufbereitungsprinzip) as 'Fuel mixture formation (KT 097)', which is the key table behind the extract's Mixture_preperation column.",
+    "key_table_source": "tecdoc_data_format"
+  },
+  "reference_drive_system": {
+    "description": "RDM Drive_system labels as an internal drive category: a one-to-one restatement of the three values the supplied extract states (see tecdoc_drive), with no values merged and none invented. Read by both the candidate drive comparison and the VIN drive comparison, so the two can never drift apart.",
+    "values": {
+      "ALL-WHEEL DRIVE": "awd",
+      "FRONT-WHEEL DRIVE": "fwd",
+      "REAR-WHEEL DRIVE": "rwd"
+    },
+    "provenance": "correspondence",
+    "provenance_note": "Each key is a Drive_system value the extract emits, quoted exactly; only the internal category name is this project's. No equivalence between AWD and selectable 4WD systems is asserted -- the categories follow the labels, not the mechanics.",
+    "completeness": "unverified",
+    "completeness_note": "Covers all three Drive_system values in the supplied extract. KT 082 itself is not published, so a fourth value arriving in a wider extract would need adding; a label absent here yields no category and compares as unknown.",
+    "source": "tecdoc_rdm_export",
+    "categories": "drive"
+  },
+  "catalogue_fuel": {
+    "values": {
+      "PETROL": "petrol",
+      "DIESEL": "diesel",
+      "ELECTRIC": "electric",
+      "PETROL/ELECTRIC": "petrol_hybrid",
+      "DIESEL/ELECTRO": "diesel_hybrid",
+      "PETROL/LIQUIFIED PETROLEUM GAS (LPG)": "petrol_lpg"
+    },
+    "description": "Reference-catalogue fuel labels, mapped into the neutral fuel categories. See categories.json.",
+    "provenance": "correspondence",
+    "provenance_note": "The labels are the two catalogues' own, quoted exactly; the internal category names are this project's. No key is recorded that neither catalogue emits: a Petrol/CNG blend was removed because the register has no such MOTIVE_POWER value and the RDM has no such Fuel_type.",
+    "completeness": "partial",
+    "completeness_note": "Covers 11 of the 18 official NZTA motive power values and all 6 RDM fuel types; the remaining NZTA values have no internal category and compare as unknown.",
+    "categories": "fuel",
+    "source": "tecdoc_rdm_export",
+    "decomposed_from": "Decomposed from source_fuel, one dict whose keys were both register MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. This section keeps only the keys the reference extract emits; the other side is stated by registry_fuel in its own file, and the two meet only in categories.json. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
+    "inherited_description": "NZTA MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. Every key is a string one of the two catalogues actually emits: the register's MOTIVE_POWER values (see nzta_motive_power) and the extract's Fuel_type values (see tecdoc_fuel). NZTA defines MOTIVE_POWER as the primary fuel source and records hybrids in it directly, so ALTERNATIVE_MOTIVE_POWER is not consulted: it is populated on 22 of 181,790 rows in the 2020 cohort, and on 19 of those it names a gas blend rather than the hybrid, which MOTIVE_POWER already carries. Plug-in and non-plug-in hybrids share one category because the reference vocabulary does not separate them; a reference listing both would tie and go to review rather than pick one. LPG and CNG are their own categories, distinct from the reference's combined Petrol/LPG, so the two disagree rather than falsely agreeing. Fuel-cell, range-extender and OTHER labels are deliberately absent: they have no reference counterpart, and unknown withholds acceptance whereas a guess could grant it."
+  },
+  "catalogue_submodel_fuel": {
+    "values": {
+      "PETROL": [
+        "petrol",
+        false
+      ],
+      "DIESEL": [
+        "diesel",
+        false
+      ],
+      "PETROL/ELECTRIC": [
+        "petrol",
+        true
+      ],
+      "DIESEL/ELECTRO": [
+        "diesel",
+        true
+      ],
+      "ELECTRIC": [
+        "electric",
+        false
+      ]
+    },
+    "description": "Reference-catalogue fuel labels reduced to the fuel family and hybrid flag a SUBMODEL reading can corroborate. See categories.json.",
+    "provenance": "correspondence",
+    "provenance_note": "Keys are register MOTIVE_POWER values and RDM Fuel_type values, quoted exactly; the fuel family and hybrid flag are this project's reduction of them. No token is recorded that neither catalogue emits.",
+    "completeness": "partial",
+    "completeness_note": "Free-text tokens; no source enumerates what a submodel may contain.",
+    "categories": "fuel_family",
+    "source": "tecdoc_rdm_export",
+    "decomposed_from": "Decomposed from submodel_fuel on the same split as source_fuel: this section keeps only the keys the reference extract emits; the other side is stated by registry_submodel_fuel in its own file. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
+    "inherited_description": "MOTIVE_POWER labels reduced to the fuel family and hybrid flag that the SUBMODEL text can corroborate. Narrower than source_fuel on purpose: this only has to answer 'does the SUBMODEL text contradict the structured field', so gas blends have no entry."
+  },
+  "catalogue_structures": {
+    "values": {
+      "Convertible": "convertible",
+      "Saloon": "saloon"
+    },
+    "description": "Reference-catalogue body structures, mapped into the neutral body categories. See categories.json.",
+    "provenance": "correspondence",
+    "provenance_note": "Name identity only. A registration body is paired with a reference structure solely where the two publishers print the same word: NZTA VIRM Table 2-2-8 names body SL 'Saloon' and CV 'Convertible', and TecDoc KT 086 states 'Saloon' and 'Convertible' in the supplied extract. A reviewer can check both sides. Nothing else is paired. The judged correspondences this table used to carry -- STATION WAGON to Estate/SUV/Closed Off-Road Vehicle, SPORTS CAR to Coupe/Convertible/Saloon, UTILITY to Pickup/Platform/Chassis -- were removed: no publisher states them, and the two taxonomies are independent, so they were this project's judgement presented as vocabulary.",
+    "completeness": "partial",
+    "completeness_note": "Covers the 2 of 26 official NZTA body types whose published name also appears verbatim in the reference extract's KT 086 values. Extending it beyond name identity needs a published correspondence between the NZTA and TecDoc body taxonomies; KT 086 alone would not supply one.",
+    "categories": "body",
+    "source": "tecdoc_rdm_export",
+    "decomposed_from": "Decomposed from registration_bodies, which mapped a registry body directly onto a reference structure. Each side now maps its own publisher's value into the neutral body category instead, so catalogue_structures states only TecDoc KT 086 values and registry_bodies states the other side, in its own file. The pairing recorded was name identity, so the category is that shared name; nothing new is asserted, and each side is now checkable against its own publisher without reading the other. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
+    "inherited_description": "Registration body to reference structure, for the candidate body comparison. One registration term may legitimately cover several technical layouts, but this table records a pairing only where both publishers use the same name, so it covers 2 of the 26 NZTA body types. Everything else compares as unknown, which earns no points and vetoes nothing."
+  }
+}

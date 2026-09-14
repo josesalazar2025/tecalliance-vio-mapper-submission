@@ -1,0 +1,275 @@
+{
+  "schema_version": 1,
+  "description": "Uncalibrated support scoring. Weights and caps are documented expert-judgment hypotheses, never fitted parameters or probabilities. Fixed denominators: missing evidence cannot increase a candidate's score. Group caps limit accumulation of related observations; they do not assert statistical independence. Gates, family codes and transmission earn no points. The score ranks candidates that have ALREADY passed the evidence floor, so a field the floor requires cannot rank them -- see gate_fields. Maximum attainable score is the sum of the group caps.",
+  "sources": {
+    "eu_2018_858": {
+      "title": "Regulation (EU) 2018/858, Annex I Part B — Criteria for types of vehicle, variants and versions",
+      "url": "https://www.legislation.gov.uk/eur/2018/858/annex/I",
+      "scope": "The legal criteria that individuate a vehicle version and a vehicle variant, for categories M1 and N1. Cited for which ATTRIBUTES separate one vehicle from another, never for any number: it states no weight, threshold or tolerance. It mentions neither TecDoc nor the New Zealand register.",
+      "accessed": "2026-09-13",
+      "local_copy": "docs/rule-sources/eu/eu_2018_858_annex_i_part_b.md",
+      "sha256": "0bec165c2c8a2c49b7de13844411480181853bc499c98bf2652f7520710ca79c",
+      "retrieval_note": "EUR-Lex serves the articles and the annexes separately and the consolidated HTML at CELEX 02018R0858-20240701 stops before Annex I; the transcription was taken from legislation.gov.uk, which publishes the Annex as retained EU law with the EU wording preserved."
+    },
+    "unece_r85": {
+      "title": "UN/ECE Regulation No 85 — measurement of net power, paragraph 5.4",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:42014X1107(01)",
+      "scope": "Paragraph 5.4 concerns a power measurement against a declaration during type approval. The citation is retained for context, not to establish a permissible difference between catalogue records.",
+      "accessed": "2026-09-13",
+      "local_copy": "docs/rule-sources/eu/unece_r85.md",
+      "sha256": "2abf5952e3abb8b44cbfb9b44b84cfbb13df78d28d78b2534fb8336a353ba53c",
+      "retrieval_note": "The UNECE-hosted PDF refuses automated requests (HTTP 403); the text was taken from the EUR-Lex publication of the same Regulation, OJ L 323, 7.11.2014, pp. 52-90."
+    },
+    "nzta_mvr_fields": {
+      "title": "NZTA Motor Vehicle Register open data, field descriptions",
+      "url": "https://opendata-nzta.opendata.arcgis.com/pages/mvr-data-field-descriptions",
+      "scope": "Cited here for two field definitions only: CC_RATING is 'cc, Integer' and POWER_RATING is 'kW, Integer'. The full entry, with its retrieval note, lives in vio_mapper/rules/registries/nz.json; it is repeated here because the integer-rounding argument behind the power triage band rests on it.",
+      "accessed": "2026-09-12",
+      "local_copy": "docs/rule-sources/nz/nzta_mvr_fields.md",
+      "sha256": "e976d86fe9a5f8246ad851cd7d3da0dd7250de5bb18d88b137726d2f7fd0a733"
+    },
+    "searched_and_absent": {
+      "title": "TecAlliance and NZTA matching methodology — searched for, not found",
+      "scope": "Recorded so that the absence is a finding rather than an omission. Searched 2026-09-13: the TecDoc Data Format v2.7 (207 pp, held locally) defines key tables and prints no matching rule; the public TecDoc developer API documents vehicle lookup by a carId/kType that the caller already holds, and states no attribute, tolerance, confidence or tie-break rule; the TecAlliance VIO product pages describe a 'unique harmonisation tool' and data 'enriched by TecDoc experts' without publishing a method; NZTA publishes vehicle attribute definitions but nothing about mapping its register to any third-party catalogue. No public source from either publisher grounds any weight, cap, threshold or margin below.",
+      "accessed": "2026-09-13"
+    }
+  },
+  "field_weights": {
+    "power": 15,
+    "engine": 10,
+    "drive": 10,
+    "body": 5
+  },
+  "group_caps": {
+    "powertrain": 25,
+    "configuration": 15,
+    "identity": 30,
+    "temporal": 5
+  },
+  "group_members": {
+    "powertrain": [
+      "power",
+      "engine"
+    ],
+    "configuration": [
+      "drive",
+      "body"
+    ]
+  },
+  "core_conflicts": {
+    "description": "Several evidence columns restate the same underlying observation: the SUBMODEL rounded-litres check mirrors CC_RATING, the VIN helper mirrors drive/engine. Collapsing them prevents counting one disagreement twice when deciding whether a candidate is contradicted on exactly one independent specification.",
+    "values": {
+      "capacity": "capacity",
+      "submodel_capacity": "capacity",
+      "fuel": "fuel",
+      "submodel_fuel_family": "fuel",
+      "submodel_hybrid": "fuel",
+      "power": "power",
+      "drive": "drive",
+      "vin_drive": "drive",
+      "body": "body",
+      "submodel_body": "body",
+      "submodel_cab": "body",
+      "variant": "variant",
+      "engine": "engine",
+      "vin_engine": "engine",
+      "vin_generation": "generation",
+      "chronology": "chronology"
+    }
+  },
+  "unproposable_conflicts": {
+    "description": "A chronology contradiction suggests the wrong production interval altogether, so it is never downgraded to a proposal, however strong the identifiers are.",
+    "values": [
+      "chronology"
+    ]
+  },
+  "submodel_core_fields": {
+    "description": "SUBMODEL facts and consistency checks are named after the token that produced them; review needs the specification they belong to, so contradictions are reported under one shared vocabulary instead of a dozen internal key names. A key absent from this table reports under its own name.",
+    "values": {
+      "capacity_litres": "capacity",
+      "capacity": "capacity",
+      "fuel_family": "fuel",
+      "fuel": "fuel",
+      "hybrid": "fuel",
+      "transmission_kind": "transmission",
+      "transmission": "transmission",
+      "gear_count": "transmission",
+      "reported_cvt_steps": "transmission",
+      "drive_category": "drive",
+      "drive": "drive",
+      "body_family": "body",
+      "body": "body",
+      "cab_configuration": "body",
+      "cab": "body",
+      "door_count": "doors",
+      "variant": "variant",
+      "marketing_trim": "trim"
+    }
+  },
+  "gate_fields": {
+    "description": "Compared and vetoed like any other specification, but deliberately unscored. evidence._evidence_floor_route requires exact fuel agreement on every route, and exact capacity on the displacement route; on the displacement-less route capacity is not comparable at all. Every candidate that can be accepted therefore agrees on both, so scoring them awarded an identical 35 points to every candidate still in contention. That ranked nothing -- it shifted the scale, and the shift sat inside the powertrain cap, which left power and engine worth 10 points between them however completely they agreed. A prerequisite is not evidence that one candidate beats another.",
+    "values": [
+      "capacity",
+      "fuel"
+    ],
+    "note": "Removing them from the score changes no veto, no evidence floor and no conflict check. They remain in COMPARED_FIELDS, in the core-conflict table and in the audit trail."
+  },
+  "cap_note": {
+    "description": "A cap must never fall below what its own members contribute, or it discards evidence rather than limiting accumulation. Every cap equals the sum of its members, and test_config enforces that invariant."
+  },
+  "grounding": {
+    "description": "What each part of the scoring and gate system rests on, and where this project extrapolates. Read the two apart: WHICH attributes separate one vehicle from another is grounded; HOW MUCH each agreement is worth is not, and no public source from either publisher states it. Every entry below names its basis and, where it is an inference, says what the inference assumes and how it could be wrong.",
+    "grounded": {
+      "which_attributes_individuate_a_vehicle": {
+        "claim": "Capacity, fuel and power belong together as the attributes that separate one vehicle from the next, and body and drive sit one level coarser.",
+        "source": "eu_2018_858",
+        "basis": "Annex I Part B states it directly for both categories this data contains. Engine capacity (1.3.1(b) / 3.3.1(b)), maximum engine power output (c) and nature of the fuel (d) are VERSION criteria: two vehicles differing on any of them are different versions. Type of bodywork (1.2.1(a) / 3.2.1(a)) and the number and interconnection of powered axles (d) are VARIANT criteria, which group a broader set. The evidence floor's demand for exact capacity and fuel, and the split between the powertrain and configuration groups, follow the same shape."
+      },
+      "a_power_band_can_exist_and_has_a_ceiling": {
+        "claim": "The cited R85 passage describes a measurement/declaration acceptance tolerance.",
+        "source": "unece_r85",
+        "basis": "Its measurement context does not establish how two catalogue records should be compared. No cross-catalogue acceptance tolerance is inferred here."
+      },
+      "integer_rounding_is_a_real_mechanism": {
+        "claim": "The source power field is recorded in integer kW.",
+        "source": "nzta_mvr_fields",
+        "basis": "A one-kW triage band is a project heuristic consistent with some rounding differences, not evidence that either catalogue used a particular rounding convention."
+      },
+      "scored_fields_are_criteria": {
+        "claim": "The selected specification fields correspond to cited attribute categories; the engine-code comparison uses a proxy.",
+        "source": "eu_2018_858",
+        "basis": "Power, bodywork and powered axles have corresponding cited criteria. The engine-code field is a project proxy for power-plant construction features, not a criterion stated by the Annex. Whether these comparisons suffice to select a kType is an engineering judgment."
+      },
+      "acceptance_at_both_annex_levels": {
+        "claim": "The cited taxonomy includes attributes at both variant and version levels.",
+        "source": "eu_2018_858",
+        "basis": "Selecting a sole surviving candidate with agreement at both levels is a project sufficiency judgment, not a result stated by this taxonomy."
+      }
+    },
+    "extrapolated": {
+      "description": "Inferences this project makes. Each is stated so a reviewer can reject it without having to find it first.",
+      "a_ktype_resembles_a_version": {
+        "inference": "A kType is treated as being at roughly the granularity of a type-approval version, so that the version criteria are the right ones to compare on.",
+        "rests_on": "An observation, not a statement: the supplied RDM columns line up with the Annex I criteria almost one for one -- Capacity_cubic with 1.3.1(b), Maximum_output_KW with (c), Fuel_type with (d), Kind_of_structure with 1.2.1(a), Drive_system with 1.2.1(d), Cylinder with 1.2.1(b)(iii).",
+        "how_it_could_be_wrong": "TecAlliance states nowhere that a kType is a version, and the alignment could be coincidental or partial. A kType may be finer than a version where a catalogue splits on a fitment-relevant difference the Regulation ignores, or coarser where it merges versions no part distinguishes. Nothing in the matcher depends on the identity holding exactly: the criteria are used to justify which fields are compared and how they are grouped, never to assert that one kType equals one version."
+      },
+      "eu_criteria_applied_to_a_new_zealand_register": {
+        "inference": "The EU criteria are used to reason about vehicles registered in New Zealand.",
+        "rests_on": "The reference catalogue is a European product built around this regime, and the vehicles in the supplied data are overwhelmingly EU- or Japan-built passenger cars and light commercials sold into a market that accepts overseas approvals.",
+        "how_it_could_be_wrong": "New Zealand has its own entry certification regime and much of the register is used Japanese imports approved under Japanese rules. The Regulation is not NZ law and does not bind what NZTA records. It is cited for what individuates a vehicle as a matter of engineering classification, not as an authority over this register."
+      },
+      "r85_does_not_license_a_catalogue_tolerance": {
+        "inference": "None. Recorded to prevent the opposite inference being read into the citation.",
+        "rests_on": "Paragraph 5.4 governs a measurement against a declaration during approval. Both NZTA and TecDoc should be recording a declared figure rather than measuring one, so the 2 per cent band is not a licence for a 2 per cent band between the two catalogues.",
+        "how_it_could_be_wrong": "It could not; this is a limit on the citation, not a claim. power_tolerance_pct stays at 0 by default and remains the data owner's decision."
+      },
+      "dominance_policy": {
+        "inference": "Version precedence, the two-variant sibling brake, variant sufficiency and the pool-size identifier guard are provisional matching rules.",
+        "rests_on": "The cited attribute taxonomy and synthetic behavioral tests; neither establishes a statistical evidence ordering or a kType identification rule.",
+        "how_it_could_be_wrong": "Missing values and pool composition can favor a candidate whose recorded agreement is more complete without making its vehicle identity correct. Domain adjudication is needed."
+      }
+    },
+    "not_grounded": {
+      "description": "The reviewed sources did not supply or validate the settings below. This is a limitation of the evidence reviewed, not proof that no publisher methodology exists.",
+      "values": [
+        "every number in field_weights: how much an agreeing specification is worth",
+        "every number in group_caps: how far related observations may accumulate",
+        "accept_score: how much shared evidence is enough to assign a kType",
+        "min_margin: how far the leader must outscore the next candidate",
+        "year_weight: what a production-interval overlap is worth",
+        "the identity group being all-or-nothing rather than graded",
+        "the specific composition of each evidence floor route",
+        "the uniqueness route's sufficiency: that agreement at both Annex I levels plus an eliminated pool is enough to assign",
+        "that an identifier match alone may never accept a row, however strong the code"
+      ],
+      "note": "All weights and cutoffs remain uncalibrated. A weighted sum assumes a common support scale. Dominance avoids that sum but retains judgments about precedence, sibling separation and sufficient evidence; neither approach has measured general accuracy on this dataset."
+    }
+  },
+  "uncomparable_criteria": {
+    "description": "Annex I criteria that individuate a vehicle but that this catalogue pair cannot compare, because one side or the other does not carry the field. Recorded because the gap is a property of the two extracts, not of the decision procedure: a wider pair would close some of it. None of these is a defect to fix in code.",
+    "source": "eu_2018_858",
+    "values": {
+      "maximum_number_of_seating_positions": {
+        "criterion": "version, 1.3.1(e) / 3.3.1(e)",
+        "registry_field": "NUMBER_OF_SEATS",
+        "reference_field": null,
+        "note": "Present in the register, absent from the RDM extract. It is exactly what separates the 5-seat and 7-seat X-TRAIL ST rows, which currently reach different candidates only through VIN evidence."
+      },
+      "technically_permissible_maximum_laden_mass": {
+        "criterion": "version, 1.3.1(a) / 3.3.1(a)",
+        "registry_field": "GROSS_VEHICLE_MASS; VDAM_WEIGHT",
+        "reference_field": null,
+        "note": "Present in the register, absent from the RDM extract."
+      },
+      "number_and_arrangement_of_cylinders": {
+        "criterion": "variant, 1.2.1(b)(iii) / 3.2.1(c)(iii)",
+        "registry_field": null,
+        "reference_field": "Cylinder",
+        "note": "The reverse gap: carried by the RDM extract, absent from the register."
+      },
+      "number_of_axles": {
+        "criterion": "variant, 1.2.1(c) / 3.2.1(d)",
+        "registry_field": "NUMBER_OF_AXLES",
+        "reference_field": null,
+        "note": "Present in the register, absent from the RDM extract."
+      }
+    }
+  },
+  "unscored_comparisons": {
+    "description": "Fields that are compared, and whose disagreement still vetoes a candidate, but that earn no points. Two different reasons, kept apart because they justify different things.",
+    "gate": {
+      "values": [
+        "capacity",
+        "fuel"
+      ],
+      "reason": "See gate_fields. The evidence floor requires them of every candidate that could be accepted, so scoring them ranked nothing."
+    },
+    "redundant_and_brand_scoped": {
+      "values": [
+        "variant"
+      ],
+      "reason": "The Mercedes 'C 200' style type designation. Unscored for two independent reasons, either of which would be enough. FIRST, it is not a criterion: Regulation (EU) 2018/858 Annex I Part B individuates a version by engine capacity, maximum power output, nature of the fuel, laden mass and seating positions, and a variant by bodywork, powered axles, axle counts and cylinder arrangement. A commercial type designation appears in neither list. What the designation encodes -- the engine and output class -- is already counted as capacity and power, so awarding it a third time counted one observation twice, which is the thing group caps exist to prevent. SECOND, it was earnable by one manufacturer only: evidence.candidate_evidence returns 'not comparable' for every make except MERCEDES-BENZ, so four of the five makes in the supplied data could never earn those 10 points however well evidenced they were. A scoring field whose availability depends on the badge rather than on the evidence cannot be defended as a general rule, and the project already refuses model-scoped readings elsewhere for the same reason (see the submodel_cab note in config.VETO_FIELDS). It remains compared and remains a veto: a designation that genuinely disagrees still contradicts the candidate."
+    }
+  },
+  "criterion_tier": {
+    "description": "Attribute groups informed by the cited Annex I criteria. Treating version agreement as preceding variant agreement is an engineering policy for incomplete records, not a ranking specified by the regulation. Tests constrain weights to the chosen ordering; this does not validate their magnitudes or their use as matching evidence.",
+    "source": "eu_2018_858",
+    "values": {
+      "capacity": {
+        "tier": "version",
+        "criterion": "1.3.1(b) / 3.3.1(b) the engine capacity",
+        "scored": false,
+        "note": "An unscored gate; see gate_fields. Declared here because it is a version criterion whatever it is worth, and complete_version_evidence reads this table to decide which criteria each tier holds."
+      },
+      "fuel": {
+        "tier": "version",
+        "criterion": "1.3.1(d) / 3.3.1(d) the nature of the fuel",
+        "scored": false,
+        "note": "An unscored gate; see gate_fields."
+      },
+      "power": {
+        "tier": "version",
+        "criterion": "1.3.1(c) / 3.3.1(c) the maximum engine power output"
+      },
+      "engine": {
+        "tier": "variant",
+        "criterion": "1.2.1(b) / 3.2.1(c) the power plant's construction features"
+      },
+      "drive": {
+        "tier": "variant",
+        "criterion": "1.2.1(d) / 3.2.1(e) the number, and interconnection of powered axles"
+      },
+      "body": {
+        "tier": "variant",
+        "criterion": "1.2.1(a) / 3.2.1(a) the number of lateral doors or the type of bodywork"
+      }
+    },
+    "note": "Capacity and fuel are unscored gates. The implemented weight ordering and agreement-set ordering are provisional choices. Engine-code agreement is a proxy for power-plant features. Missing fields and catalogue composition remain limitations under both selectors."
+  },
+  "acceptance_routes": {
+    "description": "The two ways a candidate may be accepted. They answer different questions and neither subsumes the other, which is why there are two rather than one threshold that tries to do both.",
+    "support score": "The total reaches the configured threshold and leads the next compatible candidate by the configured margin. Measures how MUCH evidence there is.",
+    "sole candidate, complete version evidence": "Rivals existed and every one was contradicted; the survivor agrees on every version-defining criterion the two catalogues share (Annex I 1.3.1(b)(c)(d) -- capacity, fuel, power) and on at least one variant criterion (1.2.1(a)(b)(d) -- body, the power plant, powered axles). Measures whether the evidence DISCRIMINATED, which a total cannot express: a sole survivor out of thirty and a leader among five score the same. It bypasses the threshold deliberately, because the threshold answers the other question. It does not bypass any veto, the evidence floor, or the identifier-coherence checks.",
+    "guards": "Two, both added after measurement against the 17,710-kType stress catalogue. The pool must have held more than one candidate -- six acceptances there had a pool of exactly one, where 'sole survivor' discriminates nothing. And a variant criterion must agree, because capacity and fuel are gates the floor already demands, so 'every version criterion agrees' would otherwise reduce to 'power agrees': 30 of 63 acceptances there rested on nothing else."
+  }
+}

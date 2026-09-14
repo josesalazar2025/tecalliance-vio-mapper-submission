@@ -1,0 +1,909 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "nzta": {
+      "title": "NZTA VIN layouts",
+      "url": "https://www.nzta.govt.nz/vehicles/vehicle-registration/vin",
+      "scope": "Official NZTA diagrams; pre/post 29 November 2009. The layouts are published only as two images, VIN-pic-1.jpg and VIN-pic-2.jpg; the page text states no character position. Every position meaning recorded here is a reading of those two pictures, transcribed box by box in the stored copy. The stored copy also carries NZTA's own statement of the length and character set, from VIRM 1-1 VIN and chassis number, which is what the decoder validates against.",
+      "accessed": "2026-09-13",
+      "retrieval_note": "The live site refuses automated requests (HTTP 403), so the images were retrieved through the Internet Archive. They are byte-identical in the captures of 2025-02-12 and 2026-02-21: VIN-pic-1.jpg sha256 e2ded28ca9332eada6dabc1ef8b1af8d6816cd54e429fe8fcce6928cd899ed9a, VIN-pic-2.jpg sha256 ed4c983e03cc734d3d37915efbe8066b21d967e603f73eb34fdd69915afed365.",
+      "local_copy": "docs/rule-sources/nz/nzta_vin_layouts.md",
+      "sha256": "0311a8bda6dab5717ca5d666efba7510365adf996393f0965275ce10dbef817b"
+    },
+    "nissan": {
+      "title": "Nissan T32 workshop manual",
+      "url": "https://qualityservicemanual.com/sites/default/files/Nissan%20X-Trail%20%28T30-32%29%202001-2016.pdf",
+      "scope": "OEM manual mirrored; GI-39, PDF page 3; diagram visually checked",
+      "accessed": "2026-09-10"
+    },
+    "kona": {
+      "title": "Hyundai Kona OS 2020 2.0 MPI workshop manual preview",
+      "url": "https://www.emanualonline.com/cars/hyundai/kona/2020-hyundai-kona-os-g-2-0-mpi-service-repair-manual-emo-583237",
+      "scope": "OEM manual preview hosted by retailer; Identification Numbers",
+      "accessed": "2026-09-10"
+    },
+    "tucson": {
+      "title": "Hyundai Tucson TL 2016 workshop manual preview",
+      "url": "https://www.emanualonline.com/cars/hyundai/tucson/2016-hyundai-tucson-tl-g-1-6-t-gdi-service-repair-manual-emo-583485",
+      "scope": "OEM manual preview; Identification Numbers; TMA/diesel applicability not fully verified",
+      "accessed": "2026-09-10"
+    },
+    "mercedes": {
+      "title": "Mercedes-Benz Academy Pune VIN training",
+      "url": "https://www.scribd.com/document/438388673/VIN-Engine-No",
+      "scope": "OEM training mirror; numeric European VIN layout; older than W1K",
+      "accessed": "2026-09-10"
+    },
+    "w1k": {
+      "title": "Mercedes-Benz AG manufacturer VIN submission",
+      "url": "https://vpic.nhtsa.dot.gov/mid/home/displayfile/57a03822-7264-4822-b2f7-0ec38f58703d",
+      "scope": "NHTSA-hosted OEM submission; used ONLY to identify W1K manufacturer",
+      "accessed": "2026-09-10"
+    },
+    "ford": {
+      "title": "Ford 2011.50 Ranger workshop manual, Identification Codes",
+      "url": "https://www.scribd.com/document/910508639/100-01",
+      "scope": "OEM manual mirror; Thailand layout, section 100-01-10; earlier MNA generation",
+      "accessed": "2026-09-10"
+    },
+    "ford_new": {
+      "title": "Australian vehicle type approval VTA-060289",
+      "url": "https://www.autoevolution.com/pdf/news_attachements/2025-ford-ranger-phev-granted-road-vehicle-type-approval-in-australia-247226.pdf",
+      "scope": "Government approval mirror; final page; MPB layout for later generation, not proof of all 2020 code values",
+      "accessed": "2026-09-10"
+    },
+    "nzta_virm_attributes": {
+      "title": "NZTA VIRM, entry certification 2-2 Vehicle attributes definitions (Table 2-2-1)",
+      "url": "https://vehicleinspection.nzta.govt.nz/virms/entry-certification/pre-reg-and-vin/vehicle-attributes/vehicle-attributes-definitions",
+      "scope": "Table 2-2-1, LANDATA-defined vehicle types: the 14 two-digit codes and the type each denotes. LANDATA is the system that assigns a 7A8/7AT VIN, and this code is what such a VIN carries at positions 8-9.",
+      "accessed": "2026-09-13",
+      "local_copy": "docs/rule-sources/nz/nzta_virm_attributes.md",
+      "sha256": "480a28f20fc0ea079e6469e667310752fe0df2fe39cd79e6eb0c047c5bba6d07"
+    }
+  },
+  "profiles": [
+    {
+      "id": "nzta_7A8",
+      "pattern": "^7A8",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "assigning_authority",
+          "values": {
+            "7A8": "NZ transport authority"
+          },
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 5,
+          "key": "make",
+          "values": {
+            "DH": "Nissan"
+          },
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 6,
+          "end": 7,
+          "key": "model_code",
+          "values": {},
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": "LANDATA model lookup unavailable; 6L must not be split into a model-year digit and batch letter."
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "key": "vehicle_type_code",
+          "values": {
+            "01": "Mopeds[1]",
+            "02": "Trailers and trailer caravans",
+            "03": "Tractors[1,2]",
+            "04": "Agricultural machines[1,2]",
+            "05": "Trailers not designed for normal highway use[1]",
+            "06": "Mobile machines not designed for normal highway use[1]",
+            "07": "Passenger cars and vans",
+            "08": "Goods vehicles (vans, utilities, trucks)",
+            "09": "Passenger vehicles (buses)",
+            "10": "Self-propelled caravan",
+            "11": "Motorcycles",
+            "12": "All-terrain vehicles (ATVs)[3]",
+            "13": "Special purpose vehicles[2]",
+            "23": "Agricultural tractors capable of more than 50km/h"
+          },
+          "source_ids": [
+            "nzta",
+            "nzta_virm_attributes"
+          ],
+          "evidence_status": "documented",
+          "note": "The positions come from NZTA's pre-2009 VIN diagram, which prints 07 in this slot and captions it \"NZTA vehicle type code\"; the code meanings come from VIRM 2-2 Table 2-2-1, quoted verbatim including its superscript note markers. Only the pre-2009 layout has this slot: the post-2009 layout replaces it with the meaningless X at position 9. The register records its own wording for 13 of these codes in registries/nz.json registry_vehicle_types, keyed by the spelling the register emits; code 23 has no register spelling recorded there, and no correspondence between the two spellings is asserted here."
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "key": "vin_assignment_year_code",
+          "values": {},
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": "Two-digit assignment year only; not registration/manufacture year; century unresolved."
+        }
+      ],
+      "note": "The make box in NZTA's pre-2009 diagram holds two characters, \"DH\", while the caption beneath it reads \"0DH denotes Nissan\" -- the three-character form the post-2009 diagram uses. The box and its own caption disagree, and the box is the layout, so DH is recorded for positions 4-5. The discrepancy is the source's, and is carried here rather than resolved silently.",
+      "unconstrained_fields": {
+        "description": "Fields NZTA prints without stating any format rule. Recorded so the absence of a check is deliberate and attributable: the decoder reads these as written and enforces nothing, because a rule the publisher never stated would reject VINs the register may legitimately carry.",
+        "vin_assignment_year_code": "NZTA prints \"Year the VIN assigned\" with the examples 01 and 09, and states no rule that the code is numeric.",
+        "serial_component": "NZTA prints \"Number derived from the last six digits of the OE chassis number or randomly derived if no chassis number or VIN already exists\", with the example 123456, and states no rule that the result is numeric.",
+        "note": "What the source does state is enforced, and only that: NZTA writes that a valid VIN \"consists of 17 characters that never contain the letters I, O or Q\" (VIRM 1-1 VIN and chassis number), and diagram 2 prints \"No meaning always X\" at position 9."
+      }
+    },
+    {
+      "id": "nzta_7AT",
+      "pattern": "^7AT",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "assigning_authority",
+          "values": {
+            "7AT": "NZ transport authority"
+          },
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 6,
+          "key": "make",
+          "values": {
+            "0DH": "Nissan"
+          },
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 8,
+          "key": "model_code",
+          "values": {},
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": "LANDATA model lookup unavailable; 6L must not be split into a model-year digit and batch letter."
+        },
+        {
+          "start": 9,
+          "end": 9,
+          "key": "filler",
+          "values": {
+            "X": "Fixed filler; no vehicle attribute"
+          },
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "key": "vin_assignment_year_code",
+          "values": {},
+          "source_ids": [
+            "nzta"
+          ],
+          "evidence_status": "documented",
+          "note": "Two-digit assignment year only; not registration/manufacture year; century unresolved."
+        }
+      ],
+      "note": "The registration authority assigns this VIN itself, so its characters carry no manufacturer variant and no production year. Declared here rather than in code so that a register whose authority assigns VINs under a different prefix, or not at all, states its own.",
+      "authority_assigned_prefix": "7AT",
+      "authority_label": "NZTA",
+      "unconstrained_fields": {
+        "description": "Fields NZTA prints without stating any format rule. Recorded so the absence of a check is deliberate and attributable: the decoder reads these as written and enforces nothing, because a rule the publisher never stated would reject VINs the register may legitimately carry.",
+        "vin_assignment_year_code": "NZTA prints \"Year the VIN assigned\" with the examples 01 and 09, and states no rule that the code is numeric.",
+        "serial_component": "NZTA prints \"Number derived from the last six digits of the OE chassis number or randomly derived if no chassis number or VIN already exists\", with the example 123456, and states no rule that the result is numeric.",
+        "note": "What the source does state is enforced, and only that: NZTA writes that a valid VIN \"consists of 17 characters that never contain the letters I, O or Q\" (VIRM 1-1 VIN and chassis number), and diagram 2 prints \"No meaning always X\" at position 9."
+      }
+    },
+    {
+      "id": "nissan_t32",
+      "pattern": "^JN1...T32",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "manufacturer",
+          "values": {
+            "JN1": "Nissan"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 4,
+          "key": "body",
+          "values": {
+            "J": "Wagon",
+            "T": "SUV"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 5,
+          "end": 5,
+          "key": "engine",
+          "values": {
+            "A": "MR20DD",
+            "B": "QR25DE",
+            "C": "R9M"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 6,
+          "end": 6,
+          "key": "drive",
+          "values": {
+            "A": "2WD",
+            "N": "4WD"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 9,
+          "key": "series",
+          "values": {
+            "T32": "X-Trail T32"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 10,
+          "end": 10,
+          "key": "destination",
+          "values": {
+            "U": "Europe / Israel / Ukraine"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": "A not resolved by retrieved table; this position is NOT model year."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "filler",
+          "values": {
+            "0": "Stopgap; no meaning"
+          },
+          "source_ids": [
+            "nissan"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "hyundai_kona_os",
+      "pattern": "^KMHK",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "manufacturer",
+          "values": {
+            "KMH": "Hyundai passenger vehicle"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 4,
+          "key": "series",
+          "values": {
+            "K": "Kona OS"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 5,
+          "end": 5,
+          "key": "grade",
+          "values": {
+            "5": "High grade (TOP)"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": "Factory grade does not establish the NZ marketing trim."
+        },
+        {
+          "start": 6,
+          "end": 6,
+          "key": "body",
+          "values": {
+            "8": "Wagon"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 7,
+          "key": "restraint",
+          "values": {
+            "1": "Active seat belts on both sides"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": "Does not establish the complete airbag specification."
+        },
+        {
+          "start": 8,
+          "end": 8,
+          "key": "engine",
+          "values": {
+            "A": "Nu 2.0 MPI"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 9,
+          "end": 9,
+          "key": "steering_transmission",
+          "values": {
+            "M": "Right-hand drive, automatic",
+            "S": "Right-hand drive, automatic with transfer"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": "Non-US layout; not a check digit."
+        },
+        {
+          "start": 10,
+          "end": 10,
+          "key": "model_year",
+          "values": {
+            "K": "2019",
+            "L": "2020"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": "Scoped to this vehicle generation; model year need not equal registration year."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "plant",
+          "values": {
+            "U": "Ulsan, Korea",
+            "J": "Ostrava area, Czech Republic"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "hyundai_tucson_tl",
+      "pattern": "^TMAJ",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "manufacturer",
+          "values": {},
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": "TMA scope is not independently established by this manual."
+        },
+        {
+          "start": 4,
+          "end": 4,
+          "key": "series",
+          "values": {
+            "J": "Tucson TL"
+          },
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 5,
+          "end": 5,
+          "key": "grade",
+          "values": {
+            "3": "Middle grade (GLS/JSL/TAX)"
+          },
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": "Factory grade does not establish the NZ marketing trim."
+        },
+        {
+          "start": 6,
+          "end": 6,
+          "key": "body",
+          "values": {
+            "8": "Wagon"
+          },
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 7,
+          "key": "restraint",
+          "values": {
+            "1": "Active seat belts on both sides"
+          },
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": "Does not establish the complete airbag specification."
+        },
+        {
+          "start": 8,
+          "end": 8,
+          "key": "engine",
+          "values": {},
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": "Diesel A is not in the retrieved petrol Tucson table."
+        },
+        {
+          "start": 9,
+          "end": 9,
+          "key": "steering_transmission",
+          "values": {
+            "M": "Right-hand drive, automatic",
+            "S": "Right-hand drive, automatic with transfer"
+          },
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": "Non-US layout; not a check digit."
+        },
+        {
+          "start": 10,
+          "end": 10,
+          "key": "model_year",
+          "values": {
+            "K": "2019",
+            "L": "2020"
+          },
+          "source_ids": [
+            "kona"
+          ],
+          "evidence_status": "inferred",
+          "note": "Scoped to this vehicle generation; model year need not equal registration year."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "plant",
+          "values": {
+            "U": "Ulsan, Korea",
+            "J": "Ostrava area, Czech Republic"
+          },
+          "source_ids": [
+            "tucson"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        }
+      ],
+      "note": "Shared non-US TL layout applied to TMA is an inference; review against a Czech-built diesel OEM chart."
+    },
+    {
+      "id": "mercedes_205_WDD",
+      "pattern": "^WDD205",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "manufacturer",
+          "values": {
+            "WDD": "Mercedes-Benz"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 6,
+          "key": "series",
+          "values": {
+            "205": "205"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 7,
+          "key": "body",
+          "values": {
+            "0": "Sedan",
+            "3": "Coupe"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "key": "engine_designation",
+          "values": {},
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": "80 requires a contemporary type lookup; old training engine ranges do not apply."
+        },
+        {
+          "start": 10,
+          "end": 10,
+          "key": "steering",
+          "values": {
+            "2": "Right-hand drive"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": "Not model year."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "plant",
+          "values": {
+            "F": "Bremen, Germany",
+            "G": "Bremen, Germany",
+            "R": "East London, South Africa"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": "WDD-specific plant table; extension to W1K is inferred."
+        }
+      ],
+      "note": "Do not infer build country from WMI. W1K numeric-layout continuity requires confirmation."
+    },
+    {
+      "id": "mercedes_205_W1K",
+      "pattern": "^W1K205",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "manufacturer",
+          "values": {
+            "W1K": "Mercedes-Benz"
+          },
+          "source_ids": [
+            "w1k"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 6,
+          "key": "series",
+          "values": {
+            "205": "205"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 7,
+          "key": "body",
+          "values": {
+            "0": "Sedan",
+            "3": "Coupe"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "key": "engine_designation",
+          "values": {},
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "documented",
+          "note": "80 requires a contemporary type lookup; old training engine ranges do not apply."
+        },
+        {
+          "start": 10,
+          "end": 10,
+          "key": "steering",
+          "values": {
+            "2": "Right-hand drive"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "inferred",
+          "note": "Not model year."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "plant",
+          "values": {
+            "F": "Bremen, Germany",
+            "G": "Bremen, Germany",
+            "R": "East London, South Africa"
+          },
+          "source_ids": [
+            "mercedes"
+          ],
+          "evidence_status": "inferred",
+          "note": "WDD-specific plant table; extension to W1K is inferred."
+        }
+      ],
+      "note": "Do not infer build country from WMI. W1K numeric-layout continuity requires confirmation."
+    },
+    {
+      "id": "ford_ranger_thailand",
+      "pattern": "^MPB.M",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "manufacturer",
+          "values": {
+            "MPB": "Ford, Thailand VIN scheme"
+          },
+          "source_ids": [
+            "ford_new"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 4,
+          "end": 4,
+          "key": "restraint",
+          "values": {
+            "U": "Driver/passenger, side and curtain airbags"
+          },
+          "source_ids": [
+            "ford"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 5,
+          "end": 5,
+          "key": "production_source",
+          "values": {
+            "M": "Thailand"
+          },
+          "source_ids": [
+            "ford"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 6,
+          "end": 6,
+          "key": "body",
+          "values": {
+            "F": "Double cab"
+          },
+          "source_ids": [
+            "ford"
+          ],
+          "evidence_status": "inferred",
+          "note": ""
+        },
+        {
+          "start": 7,
+          "end": 7,
+          "key": "gross_mass_band",
+          "values": {
+            "F": ">3175 kg and <=3629 kg"
+          },
+          "source_ids": [
+            "ford"
+          ],
+          "evidence_status": "inferred",
+          "note": "Earlier-generation code table; not a measured mass."
+        },
+        {
+          "start": 8,
+          "end": 8,
+          "key": "engine_code",
+          "values": {},
+          "source_ids": [
+            "ford_new"
+          ],
+          "evidence_status": "documented",
+          "note": "6 not resolved by retrieved older engine table."
+        },
+        {
+          "start": 9,
+          "end": 9,
+          "key": "constant",
+          "values": {
+            "0": "Fixed constant; not check digit"
+          },
+          "source_ids": [
+            "ford_new"
+          ],
+          "evidence_status": "documented",
+          "note": ""
+        },
+        {
+          "start": 10,
+          "end": 10,
+          "key": "production_or_model_year",
+          "values": {
+            "K": "2019",
+            "L": "2020"
+          },
+          "source_ids": [
+            "ford"
+          ],
+          "evidence_status": "inferred",
+          "note": "Earlier AU/NZ table says production year; other markets use model year. Year-sequence extension needs confirmation."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "plant_code",
+          "values": {},
+          "source_ids": [
+            "ford_new"
+          ],
+          "evidence_status": "documented",
+          "note": "X is not resolved; do not substitute the older W plant code."
+        }
+      ],
+      "note": "MPB boundaries corroborated by later approval; older MNA value mappings are explicitly inferred."
+    },
+    {
+      "id": "holden_colorado_observed",
+      "pattern": "^MMU143DK",
+      "segments": [
+        {
+          "start": 1,
+          "end": 3,
+          "key": "wmi",
+          "values": {},
+          "source_ids": [],
+          "evidence_status": "documented",
+          "note": "Manufacturer association is in dataset observations; authoritative WMI table not yet retrieved."
+        },
+        {
+          "start": 4,
+          "end": 9,
+          "key": "manufacturer_descriptor",
+          "values": {},
+          "source_ids": [],
+          "evidence_status": "documented",
+          "note": "No verified applicable Holden Thailand table. Do not apply US Chevrolet or Australian Commodore rules."
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "key": "identifier_prefix",
+          "values": {},
+          "source_ids": [],
+          "evidence_status": "documented",
+          "note": "L must not be promoted to 2020 or H to a plant without the applicable OEM chart."
+        }
+      ],
+      "note": "All characters retained; semantic decoding requires the Holden RG Thailand specification."
+    }
+  ]
+}

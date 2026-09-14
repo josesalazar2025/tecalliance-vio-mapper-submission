@@ -1,0 +1,21 @@
+# Python and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Local configuration
+.env
+.DS_Store
+
+# Authorized inputs and supplier-derived outputs are delivered separately
+data/
+*.xlsx
+*.xls
+mapping_performance.md
+*_candidate_evidence.csv
