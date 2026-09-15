@@ -42,6 +42,7 @@ include = ["vio_mapper*", "webapp*"]
 vio_mapper = [
     "rules/*.json",
     "rules/catalogues/*.json",
+    "rules/manufacturers/*.json",
     "rules/registries/*.json",
 ]
 webapp = [

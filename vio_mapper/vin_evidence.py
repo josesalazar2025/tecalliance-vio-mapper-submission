@@ -43,7 +43,7 @@ def vin_context(value, make: str, model: str, *, enabled: bool = True) -> dict:
         return context
     # A registry may carry no VIN layouts. That is an absence of evidence, not a
     # failure: the helper contributes nothing and every VIN comparison stays
-    # unknown, exactly as --no-vin-helper leaves it.
+    # unknown, exactly as disabling the library policy setting leaves it.
     if vin_rules_path() is None:
         return {**context, 'note': 'VIN helper unavailable: this registry records no VIN layouts.'}
     if not isinstance(value, str) or not value.strip():

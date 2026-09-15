@@ -16,12 +16,13 @@ import pandas as pd
 
 from vio_mapper.config import (ALL_STATUSES, COMPARED_FIELDS, MATCHED, column, identifiers,
                                VETO_FIELDS, Policy, score_rules, submodel_rules, vocabularies)
+from vio_mapper.normalization import normalized_text
 
 # Bumped whenever a field the frontend reads is renamed, removed or changes
 # meaning. The page checks it on load: a server left running across such a change
 # serves the old field names to a newly loaded script, and every figure that moved
 # quietly renders as an em dash. A mismatch must say so instead.
-PAYLOAD_VERSION = 6
+PAYLOAD_VERSION = 7
 
 # Columns the results table shows before a reviewer opens a row. The drawer
 # fetches the whole row on demand: sending all 90 columns for every row would
@@ -38,13 +39,16 @@ def table_columns() -> tuple:
             'triage_lead_kType', 'proposed_kType', 'remaining_kTypes')
 # What a reviewer needs to see about a rejected candidate to judge it without
 # opening the workbook: what it claims, what agrees, and what it contradicts.
-CANDIDATE_COLUMNS = ('KType', 'compatible', 'selected',
+CANDIDATE_COLUMNS = ('KType', 'review_rank', 'review_priority', 'review_priority_basis',
+                     'compatible', 'selected',
                      'disagreements', 'power_difference_kw', 'power_difference_pct',
                      'power_within_triage_band', 'year_relationship', 'criterion_vector',
                      'reference_Type_designation', 'reference_Model_design', 'reference_Type_design',
-                     'reference_Capacity_cubic', 'reference_Fuel_type', 'reference_Maximum_output_KW',
+                     'reference_Capacity_litre', 'reference_Capacity_cubic',
+                     'reference_Fuel_type', 'reference_Maximum_output_KW',
                      'reference_Drive_system', 'reference_Kind_of_structure', 'reference_Engine_code',
                      'reference_Construction_from', 'reference_Construction_to',
+                     'submodel_capacity_litre',
                      *(f'{field}' for field in COMPARED_FIELDS))
 # Candidates shown inline in the review brief. The full set stays one click away
 # in the row drawer; a brief that printed every compared candidate would be the
@@ -123,16 +127,107 @@ def records(frame: pd.DataFrame, columns=None) -> list[dict]:
             for row in frame.to_dict('records')]
 
 
+def _kType(value) -> int | None:
+    """A result-cell kType, without treating blank/NA values as candidates."""
+    cleaned = _clean(value)
+    if cleaned in (None, ''):
+        return None
+    try:
+        return int(float(cleaned))
+    except (TypeError, ValueError):
+        return None
+
+
+def _kType_list(value) -> set[int]:
+    """Semicolon-separated result kTypes as a set, tolerating empty cells."""
+    cleaned = _clean(value)
+    if cleaned in (None, ''):
+        return set()
+    parsed = set()
+    for token in str(cleaned).split(';'):
+        candidate = _kType(token.strip())
+        if candidate is not None:
+            parsed.add(candidate)
+    return parsed
+
+
+def order_candidates_for_review(row, candidates: pd.DataFrame) -> pd.DataFrame:
+    """Put the decision's likeliest candidates first in every UI candidate list.
+
+    This is presentation order, not a new matching decision or a probability.
+    Explicit decision outputs lead: the accepted candidate, an advisory proposal
+    or lead, and an explicit shortlist. Remaining compatible candidates follow.
+    Within the same tier, fewer contradictions and more agreed Annex I criteria
+    rank ahead; kType is only the deterministic final tie-breaker.
+    """
+    if candidates.empty:
+        return candidates.copy()
+    ranked = candidates.copy()
+    selected = _kType(row.get('mapped kType'))
+    proposed = _kType(row.get('proposed_kType'))
+    lead = _kType(row.get('triage_lead_kType'))
+    shortlist = _kType_list(row.get('triage_lead_alternatives'))
+    remaining = _kType_list(row.get('remaining_kTypes'))
+
+    def standing(candidate) -> tuple[int, str, str]:
+        ktype = _kType(candidate.get('KType'))
+        is_selected = _clean(candidate.get('selected')) is True
+        is_compatible = _clean(candidate.get('compatible')) is True
+        if is_selected or ktype == selected:
+            return 0, 'selected', 'Accepted candidate produced by the decision policy.'
+        if ktype == proposed:
+            return 1, 'most likely', 'Advisory proposal named by identifier or scoped model evidence.'
+        if ktype == lead:
+            return 1, 'most likely', 'Closest candidate explicitly named for human review.'
+        if ktype in shortlist:
+            return 2, 'shortlist', 'Candidate included in the explicit review shortlist.'
+        if is_compatible or ktype in remaining:
+            return 3, 'compatible', 'No retained specification comparison contradicts this candidate.'
+        return 4, 'other', 'Ordered by fewer contradictions, then more criterion agreements.'
+
+    standings = [standing(candidate) for candidate in ranked.to_dict('records')]
+    ranked['_review_tier'] = [item[0] for item in standings]
+    ranked['review_priority'] = [item[1] for item in standings]
+    ranked['review_priority_basis'] = [item[2] for item in standings]
+    ranked['_contradiction_count'] = ranked.get(
+        'disagreements', pd.Series('', index=ranked.index)).fillna('').map(
+            lambda value: len([field for field in str(value).split(';') if field.strip()]))
+    agreed_columns = [name for name in ('version_criteria_agreed', 'variant_criteria_agreed')
+                      if name in ranked.columns]
+    ranked['_agreement_count'] = sum(
+        ranked[name].fillna('').map(
+            lambda value: len([field for field in str(value).split(';') if field.strip()]))
+        for name in agreed_columns
+    ) if agreed_columns else 0
+    ranked['_power_gap'] = pd.to_numeric(
+        ranked.get('power_difference_kw', pd.Series(index=ranked.index, dtype=float)),
+        errors='coerce').abs().fillna(float('inf'))
+    ranked = ranked.sort_values(
+        ['_review_tier', '_contradiction_count', '_agreement_count', '_power_gap', 'KType'],
+        ascending=[True, True, False, True, True], kind='stable')
+    ranked['review_rank'] = range(1, len(ranked) + 1)
+    return ranked.drop(columns=['_review_tier', '_contradiction_count',
+                                '_agreement_count', '_power_gap'])
+
+
 def _counts(series: pd.Series, name: str) -> list[dict]:
     """A value-count as sorted records, missing values folded into one bucket."""
     counted = series.fillna('—').replace('', '—').value_counts()
     return [{name: str(key), 'count': int(value)} for key, value in counted.items()]
 
 
+def _normalized_ids(frame: pd.DataFrame) -> pd.Series:
+    return frame[column('id')].map(normalized_text)
+
+
+def _distinct_vehicles(frame: pd.DataFrame) -> pd.DataFrame:
+    return frame.loc[~_normalized_ids(frame).duplicated()].copy()
+
+
 def summary(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict,
             source_name: str, elapsed: float) -> dict:
     """The headline figures: what came in, what was accepted, and on what basis."""
-    unique = results.drop_duplicates(column('id'))
+    unique = _distinct_vehicles(results)
     accepted = int(results['count_in_vio'].sum())
     distinct = len(unique)
     labeled = unique[unique['provided_kType'].notna()]
@@ -142,7 +237,7 @@ def summary(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict,
         subset = results[results['Match_Status'] == status]
         if len(subset):
             status_rows.append({'status': status, 'worksheet_rows': len(subset),
-                                'distinct_ids': int(subset[column('id')].nunique()),
+                                'distinct_ids': int(_normalized_ids(subset).nunique()),
                                 'glossary': STATUS_GLOSSARY.get(status, '')})
     vio = (results.loc[results['count_in_vio']].groupby('mapped kType').size()
            .rename('distinct_vehicle_count').reset_index())
@@ -171,6 +266,8 @@ def summary(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict,
             'agree': int(agreement.eq('agree').sum()),
             'disagree': int(agreement.eq('disagree').sum()),
             'unassigned': int(agreement.eq('unassigned').sum()),
+            'conflicting_ids': int(_normalized_ids(
+                results[results['provided_label_conflict']]).nunique()),
         },
         'run_utc': metadata['run_utc'],
         'algorithm_version': metadata['algorithm_version'],
@@ -182,15 +279,14 @@ def summary(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict,
     }
 
 
-def _brief_candidates(evidence: pd.DataFrame, source_key: str) -> list[dict]:
-    """The first few candidates for one row, selected/compatible first."""
+def _brief_candidates(evidence: pd.DataFrame, source_key: str, result_row) -> list[dict]:
+    """The first few candidates for one row, in the same order as its drawer."""
     if evidence.empty or 'source_key' not in evidence.columns:
         return []
     rows = evidence[evidence['source_key'] == source_key]
     if rows.empty:
         return []
-    rows = rows.sort_values(['selected', 'compatible', 'KType'],
-                            ascending=[False, False, True]).head(BRIEF_CANDIDATE_LIMIT)
+    rows = order_candidates_for_review(result_row, rows).head(BRIEF_CANDIDATE_LIMIT)
     return records(rows, CANDIDATE_COLUMNS)
 
 
@@ -228,7 +324,8 @@ def review_brief(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
     between it and compatibility. None of the three is evidence of a match, and
     none is counted in VIO.
     """
-    unresolved = results[results['Match_Status'] != MATCHED].drop_duplicates(column('id'))
+    all_unresolved = results[results['Match_Status'] != MATCHED]
+    unresolved = _distinct_vehicles(all_unresolved)
     grouped: dict[tuple, dict] = {}
     for _, row in unresolved.iterrows():
         kind = _brief_kind(row)
@@ -260,6 +357,9 @@ def review_brief(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
             'base_candidate_count': _clean(row.get('base_candidate_count')),
             'compatible_candidate_count': _clean(row.get('compatible_candidate_count')),
             'evidence_notes': _clean(row.get('evidence_notes')),
+            'source_keys': all_unresolved.loc[
+                _normalized_ids(all_unresolved).eq(normalized_text(row[column('id')])),
+                'source_key'].astype(str).tolist(),
         }
         # Everything that would make two cards read differently is in the key,
         # so folding them can never hide a distinction a reviewer would act on.
@@ -272,7 +372,7 @@ def review_brief(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
         if existing is None:
             entry['vehicle_count'] = 1
             entry['ids'] = [entry[column('id')]]
-            entry['candidates'] = _brief_candidates(evidence, entry['source_key'])
+            entry['candidates'] = _brief_candidates(evidence, entry['source_key'], row)
             grouped[key] = entry
         else:
             existing['vehicle_count'] += 1
@@ -306,7 +406,7 @@ def audit(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict, report:
     candidate* has to be reconciled before the row can match at all; one marked
     with a count blocks only that many candidates.
     """
-    unique = results.drop_duplicates(column('id'))
+    unique = _distinct_vehicles(results)
     unresolved = unique[unique['Match_Status'] != MATCHED]
     lost = []
     if len(unresolved):

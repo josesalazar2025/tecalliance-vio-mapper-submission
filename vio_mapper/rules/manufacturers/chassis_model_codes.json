@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "description": "Manufacturer-scoped model-code decoders for chassis prefixes, VINs and explicit manufacturer model-code fields. A profile is actionable only for its exact make/model, identifier kind, input pattern and known code vocabulary. Unknown formats remain neutral.",
+  "sources": {
+    "nissan_xtrail_2018_specs": {
+      "publisher": "Nissan Motor Co., Ltd.",
+      "title": "Nissan X-Trail specifications, October 2018",
+      "url": "https://www3.nissan.co.jp/content/dam/Nissan/jp/vehicles/x-trail/1810/specifications/pdf/x-trail_specsheet.pdf",
+      "scope": "The vehicle-model-code row identifies HT32 as hybrid 2WD and HNT32 as hybrid 4WD.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/nissan_xtrail_t32_chassis.md",
+      "sha256": "d3db4d55645dddde1969f3f290bfb83843ae1a252e61ef5995d10ada312b923a"
+    },
+    "nissan_recall_4682": {
+      "publisher": "Nissan Motor Co., Ltd.",
+      "title": "X-Trail recall report 4682",
+      "url": "https://www.nissan.co.jp/RECALL/DATA/report4682.html",
+      "scope": "Pairs model DAA-HNT32 with chassis number HNT32-160025, establishing the model-code prefix before the hyphen.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/nissan_xtrail_t32_chassis.md",
+      "sha256": "d3db4d55645dddde1969f3f290bfb83843ae1a252e61ef5995d10ada312b923a"
+    },
+    "nzta_mvma_model_code": {
+      "publisher": "New Zealand Transport Agency",
+      "title": "Motor Vehicle Register open-data field descriptions",
+      "url": "https://opendata-nzta.opendata.arcgis.com/pages/mvr-data-field-descriptions",
+      "scope": "Defines MVMA_MODEL_CODE as a manufacturer-assigned model code recorded at VIN allocation; it does not define the composite value's internal format.",
+      "accessed": "2026-09-12",
+      "local_copy": "docs/rule-sources/nz/nzta_mvr_fields.md",
+      "sha256": "e976d86fe9a5f8246ad851cd7d3da0dd7250de5bb18d88b137726d2f7fd0a733"
+    },
+    "mercedes_205_official_manuals": {
+      "publisher": "Mercedes-Benz",
+      "title": "Official C-Class 205 Saloon, Estate, Coupe and Cabriolet owner manuals",
+      "url": "https://static.oneweb.mercedes-benz.com/css-oom-assets/en-mt/pdf/mercedes-c-class-sedan-2020-march-w205-audio20-owners-manual-1.pdf",
+      "scope": "Official manuals enumerate C 200 vehicle types 205.080, 205.280, 205.380 and 205.480; exact companion URLs and pages are recorded in the local evidence note.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/mercedes_c_class_205_type_codes.md",
+      "sha256": "896e2a04255f590fdf2a49ee3dac4f3a0f3d5f59d84c8b306f57c5b8229d7ca7"
+    }
+  },
+  "profiles": [
+    {
+      "id": "nissan_xtrail_hnt32_chassis7",
+      "make": "NISSAN",
+      "model": "X-TRAIL",
+      "source_identifier_kind": "chassis_prefix",
+      "pattern": "^(?P<model_code>HNT32)-[A-Z0-9]$",
+      "reference_column": "Type_design",
+      "known_model_codes": ["HT32", "HNT32"],
+      "source_ids": ["nissan_xtrail_2018_specs", "nissan_recall_4682"],
+      "note": "Scoped to the HNT32-1 value present in the supplied CHASSIS7 field. Add a sourced profile rather than broadening this regex for another format."
+    },
+    {
+      "id": "mercedes_c_class_205_mvma_hint",
+      "make": "MERCEDES-BENZ",
+      "model": "C-CLASS",
+      "source_identifier_kind": "manufacturer_model_code",
+      "pattern": "^(?P<model_code>205(?:080|280|380|480))[A-Z0-9-]+$",
+      "reference_column": "Type_design",
+      "known_model_codes": ["205080", "205280", "205380", "205480"],
+      "decision_role": "proposal_only",
+      "source_ids": ["nzta_mvma_model_code", "mercedes_205_official_manuals"],
+      "note": "The leading MVMA value corresponds to an official Mercedes type number, but NZTA does not define the composite field format. It may propose a likely reference candidate only; it never vetoes or assigns. VIN11 is not decoded."
+    }
+  ]
+}

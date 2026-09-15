@@ -120,12 +120,17 @@ class _RowMatcher:
             include_score_diagnostics=self.include_score_diagnostics)
 
     def _candidates(self, make: str, model: str, vehicle_year, gated: bool) -> pd.DataFrame:
-        """The candidate pool: make/model always, production interval only in gate mode."""
+        """The candidate pool, with the configured production-start gate.
+
+        Gate mode excludes a candidate when the registry year predates its
+        Construction_from year. Construction_to is deliberately not a gate:
+        the registry field may be first-registration year, so a vehicle can be
+        registered after production ended.
+        """
         group = self.groups.get((make, model), self.empty)
         if not gated:
             return group
-        return group[(group['_from'] <= vehicle_year)
-                     & (group['_to'].isna() | (group['_to'] >= vehicle_year))]
+        return group[group['_from'] <= vehicle_year]
 
 
 def retain_evidence(details, status, policy):

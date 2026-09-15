@@ -28,11 +28,37 @@
       "scope": "OEM manual preview; Identification Numbers; TMA/diesel applicability not fully verified",
       "accessed": "2026-09-10"
     },
-    "mercedes": {
-      "title": "Mercedes-Benz Academy Pune VIN training",
-      "url": "https://www.scribd.com/document/438388673/VIN-Engine-No",
-      "scope": "OEM training mirror; numeric European VIN layout; older than W1K",
-      "accessed": "2026-09-10"
+    "tucson_tle_cz": {
+      "title": "Hyundai Motor Czech statement 032/23 for Tucson TLe and D4HA",
+      "url": "https://md.gov.cz/getattachment/Dokumenty/Silnicni-doprava/SME/Stanoviska-vyrobcu/mereni-emisi-u-motoru-D4HA_REVIZE-21-6-2023.pdf.aspx?lang=cs-CZ",
+      "scope": "Czech Ministry of Transport-hosted statement from Hyundai's accredited representative; establishes Tucson type TLe with D4HA applications, but does not map D4HA to VIN position 8 A",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/hyundai_tucson_tle_vin_evidence.md",
+      "sha256": "511891d544ab891da44e6a16e5c01cc6b8cff1d3a00f53cd1b868ee68a78f253"
+    },
+    "tucson_hyundai_spec": {
+      "title": "Hyundai TUCSON 2018 regional performance specification",
+      "url": "https://www.hyundai.com/pacific/en/find-a-car/tucson-2018/performance",
+      "scope": "First-party Hyundai page; corroborates a 2.0 CRDi 185 PS powertrain and an 8-speed automatic option. Regional warning applies; it is not a VIN character table.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/hyundai_tucson_tle_vin_evidence.md",
+      "sha256": "511891d544ab891da44e6a16e5c01cc6b8cff1d3a00f53cd1b868ee68a78f253"
+    },
+    "colorado_approval": {
+      "title": "Australian identification-plate approval 49093 for WCS Holden Colorado",
+      "url": "https://mvsa-api.infrastructure.gov.au/api/v1/file/view/3/14Feb2018200029.pdf",
+      "scope": "Official Australian government approval; Schedule 2 gives an MMU typical VIN and Schedule 5 identifies base approval 47708 as Holden RG. It does not publish the base VIN field layout.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/holden_colorado_rg_vin_evidence.md",
+      "sha256": "0a14559e5b9b3f80786d9961a84797733c3bf0b650cd7c4a99269e9a8966c2ee"
+    },
+    "colorado_variant_catalogue": {
+      "title": "Pedders approved-SSM Holden Colorado RG2 fitment catalogue",
+      "url": "https://www.pedders.com.au/product/gvm-kit-holden-colorado-rg2-gvm-3450kg-app-48965-gvm-rg2colorado",
+      "scope": "First-party catalogue for an approved second-stage manufacturer; associates approval 47708 and U143DK with Holden Colorado RG, 2013-2020, 2.8 TD 4x4. Supporting evidence only, not an OEM VIN chart.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/holden_colorado_rg_vin_evidence.md",
+      "sha256": "0a14559e5b9b3f80786d9961a84797733c3bf0b650cd7c4a99269e9a8966c2ee"
     },
     "w1k": {
       "title": "Mercedes-Benz AG manufacturer VIN submission",
@@ -40,16 +66,10 @@
       "scope": "NHTSA-hosted OEM submission; used ONLY to identify W1K manufacturer",
       "accessed": "2026-09-10"
     },
-    "ford": {
-      "title": "Ford 2011.50 Ranger workshop manual, Identification Codes",
-      "url": "https://www.scribd.com/document/910508639/100-01",
-      "scope": "OEM manual mirror; Thailand layout, section 100-01-10; earlier MNA generation",
-      "accessed": "2026-09-10"
-    },
-    "ford_new": {
+    "ford_approval": {
       "title": "Australian vehicle type approval VTA-060289",
       "url": "https://www.autoevolution.com/pdf/news_attachements/2025-ford-ranger-phev-granted-road-vehicle-type-approval-in-australia-247226.pdf",
-      "scope": "Government approval mirror; final page; MPB layout for later generation, not proof of all 2020 code values",
+      "scope": "Mirror of an Australian government approval document; final page documents the MPB VIN field layout. It is not used to import older Ranger code meanings or to resolve the supplied 2020 values.",
       "accessed": "2026-09-10"
     },
     "nzta_virm_attributes": {
@@ -478,7 +498,8 @@
             "J": "Tucson TL"
           },
           "source_ids": [
-            "tucson"
+            "tucson",
+            "tucson_tle_cz"
           ],
           "evidence_status": "inferred",
           "note": ""
@@ -528,10 +549,12 @@
           "key": "engine",
           "values": {},
           "source_ids": [
-            "tucson"
+            "tucson",
+            "tucson_tle_cz",
+            "tucson_hyundai_spec"
           ],
           "evidence_status": "inferred",
-          "note": "Diesel A is not in the retrieved petrol Tucson table."
+          "note": "Official sources ground TLe/D4HA and the matching 2.0 CRDi powertrain family, but neither says that A encodes it; A therefore remains unresolved."
         },
         {
           "start": 9,
@@ -542,7 +565,8 @@
             "S": "Right-hand drive, automatic with transfer"
           },
           "source_ids": [
-            "tucson"
+            "tucson",
+            "tucson_hyundai_spec"
           ],
           "evidence_status": "inferred",
           "note": "Non-US layout; not a check digit."
@@ -576,193 +600,21 @@
           "note": ""
         }
       ],
-      "note": "Shared non-US TL layout applied to TMA is an inference; review against a Czech-built diesel OEM chart."
-    },
-    {
-      "id": "mercedes_205_WDD",
-      "pattern": "^WDD205",
-      "segments": [
-        {
-          "start": 1,
-          "end": 3,
-          "key": "manufacturer",
-          "values": {
-            "WDD": "Mercedes-Benz"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": ""
-        },
-        {
-          "start": 4,
-          "end": 6,
-          "key": "series",
-          "values": {
-            "205": "205"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": ""
-        },
-        {
-          "start": 7,
-          "end": 7,
-          "key": "body",
-          "values": {
-            "0": "Sedan",
-            "3": "Coupe"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": ""
-        },
-        {
-          "start": 8,
-          "end": 9,
-          "key": "engine_designation",
-          "values": {},
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": "80 requires a contemporary type lookup; old training engine ranges do not apply."
-        },
-        {
-          "start": 10,
-          "end": 10,
-          "key": "steering",
-          "values": {
-            "2": "Right-hand drive"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": "Not model year."
-        },
-        {
-          "start": 11,
-          "end": 11,
-          "key": "plant",
-          "values": {
-            "F": "Bremen, Germany",
-            "G": "Bremen, Germany",
-            "R": "East London, South Africa"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": "WDD-specific plant table; extension to W1K is inferred."
-        }
-      ],
-      "note": "Do not infer build country from WMI. W1K numeric-layout continuity requires confirmation."
-    },
-    {
-      "id": "mercedes_205_W1K",
-      "pattern": "^W1K205",
-      "segments": [
-        {
-          "start": 1,
-          "end": 3,
-          "key": "manufacturer",
-          "values": {
-            "W1K": "Mercedes-Benz"
-          },
-          "source_ids": [
-            "w1k"
-          ],
-          "evidence_status": "documented",
-          "note": ""
-        },
-        {
-          "start": 4,
-          "end": 6,
-          "key": "series",
-          "values": {
-            "205": "205"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "inferred",
-          "note": ""
-        },
-        {
-          "start": 7,
-          "end": 7,
-          "key": "body",
-          "values": {
-            "0": "Sedan",
-            "3": "Coupe"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "inferred",
-          "note": ""
-        },
-        {
-          "start": 8,
-          "end": 9,
-          "key": "engine_designation",
-          "values": {},
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "documented",
-          "note": "80 requires a contemporary type lookup; old training engine ranges do not apply."
-        },
-        {
-          "start": 10,
-          "end": 10,
-          "key": "steering",
-          "values": {
-            "2": "Right-hand drive"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "inferred",
-          "note": "Not model year."
-        },
-        {
-          "start": 11,
-          "end": 11,
-          "key": "plant",
-          "values": {
-            "F": "Bremen, Germany",
-            "G": "Bremen, Germany",
-            "R": "East London, South Africa"
-          },
-          "source_ids": [
-            "mercedes"
-          ],
-          "evidence_status": "inferred",
-          "note": "WDD-specific plant table; extension to W1K is inferred."
-        }
-      ],
-      "note": "Do not infer build country from WMI. W1K numeric-layout continuity requires confirmation."
+      "note": "Government-hosted Hyundai evidence now grounds the TLe/D4HA applicability and Hyundai grounds the observed 2.0 CRDi/8-speed family. The petrol-manual character layout applied to TMA remains inferred; position 8 A is deliberately unresolved pending a Czech-built diesel OEM chart. This profile has no actionable kType adapter."
     },
     {
       "id": "ford_ranger_thailand",
-      "pattern": "^MPB.M",
+      "pattern": "^MPB",
       "segments": [
         {
           "start": 1,
           "end": 3,
-          "key": "manufacturer",
+          "key": "manufacturer_identifier",
           "values": {
-            "MPB": "Ford, Thailand VIN scheme"
+            "MPB": "Ford Thailand"
           },
           "source_ids": [
-            "ford_new"
+            "ford_approval"
           ],
           "evidence_status": "documented",
           "note": ""
@@ -770,54 +622,46 @@
         {
           "start": 4,
           "end": 4,
-          "key": "restraint",
-          "values": {
-            "U": "Driver/passenger, side and curtain airbags"
-          },
+          "key": "restraint_code",
+          "values": {},
           "source_ids": [
-            "ford"
+            "ford_approval"
           ],
-          "evidence_status": "inferred",
-          "note": ""
+          "evidence_status": "documented",
+          "note": "Field boundary only; the supplied value is not resolved."
         },
         {
           "start": 5,
           "end": 5,
-          "key": "production_source",
-          "values": {
-            "M": "Thailand"
-          },
+          "key": "production_source_code",
+          "values": {},
           "source_ids": [
-            "ford"
+            "ford_approval"
           ],
-          "evidence_status": "inferred",
-          "note": ""
+          "evidence_status": "documented",
+          "note": "Field boundary only; the supplied value is not resolved."
         },
         {
           "start": 6,
           "end": 6,
-          "key": "body",
-          "values": {
-            "F": "Double cab"
-          },
+          "key": "body_code",
+          "values": {},
           "source_ids": [
-            "ford"
+            "ford_approval"
           ],
-          "evidence_status": "inferred",
-          "note": ""
+          "evidence_status": "documented",
+          "note": "Field boundary only; no older-generation body mapping is imported."
         },
         {
           "start": 7,
           "end": 7,
-          "key": "gross_mass_band",
-          "values": {
-            "F": ">3175 kg and <=3629 kg"
-          },
+          "key": "gross_mass_code",
+          "values": {},
           "source_ids": [
-            "ford"
+            "ford_approval"
           ],
-          "evidence_status": "inferred",
-          "note": "Earlier-generation code table; not a measured mass."
+          "evidence_status": "documented",
+          "note": "Field boundary only; no older-generation mass mapping is imported."
         },
         {
           "start": 8,
@@ -825,10 +669,10 @@
           "key": "engine_code",
           "values": {},
           "source_ids": [
-            "ford_new"
+            "ford_approval"
           ],
           "evidence_status": "documented",
-          "note": "6 not resolved by retrieved older engine table."
+          "note": "The supplied value is not resolved by this approval."
         },
         {
           "start": 9,
@@ -838,7 +682,7 @@
             "0": "Fixed constant; not check digit"
           },
           "source_ids": [
-            "ford_new"
+            "ford_approval"
           ],
           "evidence_status": "documented",
           "note": ""
@@ -846,16 +690,13 @@
         {
           "start": 10,
           "end": 10,
-          "key": "production_or_model_year",
-          "values": {
-            "K": "2019",
-            "L": "2020"
-          },
+          "key": "production_or_model_year_code",
+          "values": {},
           "source_ids": [
-            "ford"
+            "ford_approval"
           ],
-          "evidence_status": "inferred",
-          "note": "Earlier AU/NZ table says production year; other markets use model year. Year-sequence extension needs confirmation."
+          "evidence_status": "documented",
+          "note": "K and L are retained as raw values; their years are not inferred from the removed document."
         },
         {
           "start": 11,
@@ -863,13 +704,13 @@
           "key": "plant_code",
           "values": {},
           "source_ids": [
-            "ford_new"
+            "ford_approval"
           ],
           "evidence_status": "documented",
-          "note": "X is not resolved; do not substitute the older W plant code."
+          "note": "The supplied value is not resolved by this approval."
         }
       ],
-      "note": "MPB boundaries corroborated by later approval; older MNA value mappings are explicitly inferred."
+      "note": "Official approval content is accepted through its third-party mirror. Only the documented MPB layout and explicitly stated values are retained; older Ranger code meanings are not extrapolated. This profile is audit-only and has no actionable kType adapter."
     },
     {
       "id": "holden_colorado_observed",
@@ -879,31 +720,60 @@
           "start": 1,
           "end": 3,
           "key": "wmi",
-          "values": {},
-          "source_ids": [],
-          "evidence_status": "documented",
-          "note": "Manufacturer association is in dataset observations; authoritative WMI table not yet retrieved."
+          "values": {
+            "MMU": "Holden Colorado RG approval family"
+          },
+          "source_ids": [
+            "colorado_approval"
+          ],
+          "evidence_status": "inferred",
+          "note": "The government approval directly pairs a typical MMU VIN with a Colorado based on Holden RG approval 47708; it is not a complete WMI registry entry."
         },
         {
           "start": 4,
+          "end": 8,
+          "key": "model_variant_code",
+          "values": {
+            "143DK": "Colorado RG 2.8 turbo-diesel 4x4 variant family (U143DK)"
+          },
+          "source_ids": [
+            "colorado_approval",
+            "colorado_variant_catalogue"
+          ],
+          "evidence_status": "inferred",
+          "note": "The approved-SSM catalogue states U143DK, not a VIN layout. Reading VIN positions 4-8 as its embedded 143DK portion is useful but remains inferred."
+        },
+        {
+          "start": 9,
           "end": 9,
-          "key": "manufacturer_descriptor",
+          "key": "unresolved_position_9",
           "values": {},
-          "source_ids": [],
-          "evidence_status": "documented",
-          "note": "No verified applicable Holden Thailand table. Do not apply US Chevrolet or Australian Commodore rules."
+          "source_ids": [
+            "colorado_approval"
+          ],
+          "evidence_status": "inferred",
+          "note": "The approval's typical MMU VIN also has 0 here, but publishes no meaning for it."
         },
         {
           "start": 10,
-          "end": 11,
-          "key": "identifier_prefix",
+          "end": 10,
+          "key": "unresolved_position_10",
           "values": {},
           "source_ids": [],
-          "evidence_status": "documented",
-          "note": "L must not be promoted to 2020 or H to a plant without the applicable OEM chart."
+          "evidence_status": "inferred",
+          "note": "L is retained raw and is not promoted to 2020 without an applicable Holden/GM Thailand chart."
+        },
+        {
+          "start": 11,
+          "end": 11,
+          "key": "unresolved_position_11",
+          "values": {},
+          "source_ids": [],
+          "evidence_status": "inferred",
+          "note": "H is retained raw and is not assigned a plant without an applicable Holden/GM Thailand chart."
         }
       ],
-      "note": "All characters retained; semantic decoding requires the Holden RG Thailand specification."
+      "note": "The MMU Holden RG family and embedded 143DK / U143DK relationship now have government and approved-SSM support. The latter is still an inference, supplies only RG/2.8 TD/4x4, and has no actionable kType adapter. Exact body, transmission, year and plant still require the Holden RG Thailand VIN specification or complete first-stage RVD."
     }
   ]
 }

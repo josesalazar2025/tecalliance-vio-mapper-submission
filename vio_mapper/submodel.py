@@ -10,14 +10,17 @@ from __future__ import annotations
 
 import json
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
 from .config import column, source_field, submodel_rules, vocabularies
 from .normalization import (displacement_cc, strict_text, submodel_drive_category,
                             MERCEDES_VARIANT_PATTERN, submodel_drive_pattern)
 
-CAPACITY_PATTERN = re.compile(r'(?<![A-Z0-9.])(\d{1,2}\.\d)(?:([PD])\b|(?=$|[ /]))')
+# Registry free text normally uses a decimal point while TecDoc's display field
+# uses a decimal comma.  Accept either spelling, but store and compare a Decimal;
+# punctuation is presentation, not vehicle evidence.
+CAPACITY_PATTERN = re.compile(r'(?<![A-Z0-9.,])(\d{1,2}[.,]\d)(?:([PD])\b|(?=$|[ /]))')
 TRANSMISSION_PATTERN = re.compile(r'\b(?:(\d{1,2}))?(CVT|AT|MT)\b')
 DOOR_PATTERN = re.compile(r'\b(\d{1,2})DR\b')
 WORD_PATTERN = re.compile(r'\b[A-Z]+\b')
@@ -99,9 +102,10 @@ def _collect_facts(collector: _FactCollector, normalized: str,
         if match.group() in drives:
             collector.add('drive_category', drives[match.group()], match)
     for match in CAPACITY_PATTERN.finditer(normalized):
-        if Decimal(match[1]) <= 0:
+        litres = Decimal(match[1].replace(',', '.'))
+        if litres <= 0:
             continue
-        collector.add('capacity_litres', match[1], match)
+        collector.add('capacity_litres', format(litres, 'f'), match)
         if match[2]:
             collector.add('fuel_family', FUEL_LETTERS[match[2]], match)
     for match in re.finditer(r'\bHYBRID\b', normalized):
@@ -163,9 +167,11 @@ def single_value(parsed: dict, key: str):
 def capacity_check(parsed: dict, cubic_centimetres) -> str:
     """Compare rounded marketing litres with an exact displacement.
 
-    One-decimal marketing displacement: 2.0L means [1950, 2050) cc under this
-    explicit rounding assumption. It is never exact capacity agreement and can
-    only contradict, never support.
+    A one-decimal marketing displacement is shown as consistent when the exact
+    displacement falls in its ordinary rounding interval. A value outside that
+    interval is only an apparent mismatch for review: no supplied official
+    source establishes that every marketing label follows this rounding rule,
+    so it cannot veto a candidate or declare the source self-contradictory.
 
     Displacement is read through the same helper the candidate comparison uses,
     so the two agree on what counts as a displacement at all. That matters for
@@ -179,7 +185,29 @@ def capacity_check(parsed: dict, cubic_centimetres) -> str:
         return 'unknown'
     midpoint = Decimal(litres) * 1000
     return ('consistent (rounded litres)'
-            if midpoint - 50 <= Decimal(str(value)) < midpoint + 50 else 'disagree')
+            if midpoint - 50 <= Decimal(str(value)) < midpoint + 50
+            else 'apparent mismatch (review only)')
+
+
+def capacity_litre_check(parsed: dict, catalogue_litres) -> str:
+    """Compare SUBMODEL marketing litres with TecDoc ``Capacity_litre``.
+
+    Both inputs are display values, so ``1.5`` and ``1,5`` state the same fact.
+    This comparison is review evidence only: it can narrow a shortlist after
+    the make/model/year gates, but cannot repair an exact CC_RATING conflict or
+    make a candidate eligible for automatic assignment.
+    """
+    source_litres = single_value(parsed, 'capacity_litres')
+    if source_litres is None or catalogue_litres is None:
+        return 'unknown'
+    raw = strict_text(catalogue_litres).replace(',', '.')
+    try:
+        reference_litres = Decimal(raw)
+    except InvalidOperation:
+        return 'unknown'
+    if not reference_litres.is_finite():
+        return 'unknown'
+    return 'agree' if Decimal(source_litres) == reference_litres else 'disagree'
 
 
 def fuel_checks(parsed: dict, value, table: str) -> dict:
@@ -269,6 +297,7 @@ def candidate_checks(context: dict, candidate) -> dict:
     """Compare the parsed SUBMODEL with one reference candidate."""
     parsed = context['parsed']
     checks = {'capacity': capacity_check(parsed, candidate.get('Capacity_cubic')),
+              'capacity_litre': capacity_litre_check(parsed, candidate.get('Capacity_litre')),
               **fuel_checks(parsed, candidate.get('Fuel_type'), 'catalogue_submodel_fuel'),
               'body': 'unknown', 'cab': 'unknown'}
     # Body wording in a submodel is compared only where both publishers print the

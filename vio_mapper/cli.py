@@ -19,12 +19,14 @@ from .config import (ALGORITHM_VERSION, DEFAULT_REFERENCE_PATH, DEFAULT_REGISTRY
 from .pipeline import map_vehicles, map_vehicles_streaming
 from .reporting import build_sheets, performance_report, write_workbook
 from .sources import load_source
+from .normalization import normalized_text
 
 DEFAULT_OUTPUT = Path.cwd() / 'mapped_nz_gov_reviewed.xlsx'
 DEFAULT_REPORT = Path.cwd() / 'mapping_performance.md'
 # Files whose content defines a run, and which must never be overwritten by it.
 PROVENANCE_FILES = ('config.py', 'normalization.py', 'sources.py', 'submodel.py',
-                    'vin_decoder.py', 'vin_evidence.py', 'evidence.py', 'scoring.py',
+                    'vin_decoder.py', 'vin_evidence.py', 'chassis_decoder.py',
+                    'evidence.py', 'scoring.py',
                     'dominance.py', 'decision.py', 'pipeline.py', 'reporting.py', 'cli.py')
 
 
@@ -61,7 +63,8 @@ def _rule_inputs() -> tuple[Path, ...]:
     run: the files that define the run are the selected registry's, not the
     default's. A registry with no VIN layouts contributes no VIN file.
     """
-    from .config import RULES_DIR, CATALOGUES_DIR, DEFAULT_CATALOGUE, active_registry
+    from .config import (RULES_DIR, CATALOGUES_DIR, DEFAULT_CATALOGUE,
+                         MANUFACTURER_RULES_DIR, active_registry)
 
     paths = [RULES_DIR / 'categories.json', RULES_DIR / 'scoring.json',
              RULES_DIR / 'policy_decisions.json',
@@ -69,7 +72,9 @@ def _rule_inputs() -> tuple[Path, ...]:
              REGISTRIES_DIR / f'{active_registry()}.json']
     profiles = REGISTRIES_DIR / f'{active_registry()}_submodel_profiles.json'
     vin = vin_rules_path()
-    return tuple(path for path in (*paths, profiles, vin) if path is not None and path.exists())
+    manufacturer_rules = tuple(sorted(MANUFACTURER_RULES_DIR.glob('*.json')))
+    return tuple(path for path in (*paths, profiles, vin, *manufacturer_rules)
+                 if path is not None and path.exists())
 
 
 def _check_paths(parser: argparse.ArgumentParser, args) -> None:
@@ -97,9 +102,10 @@ def run_metadata(results: pd.DataFrame, policy: Policy, source: Path, reference:
         'openpyxl': openpyxl.__version__,
         'policy': json.dumps(policy.__dict__, sort_keys=True),
         'vio_scope': 'Accepted distinct IDs only; not the complete source population',
-        'source_distinct_ids': int(results.ID.nunique()),
+        'source_distinct_ids': int(results.ID.map(normalized_text).nunique()),
         'accepted_distinct_ids': int(results.count_in_vio.sum()),
-        'unresolved_distinct_ids': int(results.ID.nunique() - results.count_in_vio.sum()),
+        'unresolved_distinct_ids': int(results.ID.map(normalized_text).nunique()
+                                       - results.count_in_vio.sum()),
         'power_tolerance_dependent_distinct_ids':
             int((results.count_in_vio & results.selected_power_tolerance_used).sum()),
         **{f'sha256_{path.name}': hashlib.sha256(path.read_bytes()).hexdigest() for path in hashed},

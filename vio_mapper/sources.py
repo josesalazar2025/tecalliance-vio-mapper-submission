@@ -11,13 +11,16 @@ from pathlib import Path
 import pandas as pd
 
 from .config import column, required_source_columns
-from .normalization import construction_yyyymm, normalized_text
+from .normalization import construction_yyyymm, normalized_text, numeric_value
 
 DELIMITED_SUFFIXES = ('.csv', '.txt', '.tsv')
 REQUIRED_REFERENCE_COLUMNS = ('KType', 'Brand', 'Sales_designation',
-                              'Construction_from', 'Construction_to')
+                              'Construction_from', 'Construction_to', 'Engine_code')
 # Bookkeeping added by this module; never part of a row's identity.
-PROVENANCE_COLUMNS = frozenset({'source_key', 'source_sheet', 'source_excel_row'})
+PROVENANCE_COLUMNS = frozenset({'source_key', 'source_sheet', 'source_excel_row',
+                                'provided_kType', 'provided_label_agreement',
+                                'provided_label_conflict',
+                                'duplicate_of', 'duplicate_id_conflict', 'canonical_record'})
 
 
 def require_columns(frame: pd.DataFrame, columns, name: str) -> None:
@@ -35,7 +38,8 @@ def read_delimited(path: Path) -> pd.DataFrame:
     empty cells are missing; everything else is kept verbatim as text and parsed
     by the same numeric/year helpers the Excel path uses.
     """
-    frame = pd.read_csv(path, dtype=str, keep_default_na=False, na_values=[],
+    separator = '\t' if path.suffix.lower() == '.tsv' else ','
+    frame = pd.read_csv(path, sep=separator, dtype=str, keep_default_na=False, na_values=[],
                         skipinitialspace=False)
     return frame.replace('', pd.NA)
 
@@ -53,13 +57,14 @@ def load_source(path: Path) -> pd.DataFrame:
 
 def _concatenate_sheets(path: Path) -> pd.DataFrame:
     """Stack every non-empty worksheet, keeping each row's origin traceable."""
-    sheets = pd.read_excel(path, sheet_name=None, dtype=object)
+    sheets = pd.read_excel(path, sheet_name=None, dtype=object,
+                           keep_default_na=False, na_values=[])
     frames = []
     for sheet, data in sheets.items():
         if data.empty:
             continue
         require_columns(data, required_source_columns(), f'{path.name}/{sheet}')
-        data = data.copy()
+        data = data.copy().replace('', pd.NA)
         blank = [column for column in data
                  if str(column).startswith('Unnamed:') and data[column].isna().all()]
         data = data.drop(columns=blank)
@@ -99,17 +104,28 @@ def _mark_duplicate_ids(data: pd.DataFrame) -> pd.DataFrame:
     are a source defect, and neither may be assigned, since nothing in the file
     says which one describes the vehicle.
     """
-    identity_columns = [column for column in data if column not in PROVENANCE_COLUMNS]
+    identity_columns = [name for name in data if name not in PROVENANCE_COLUMNS]
+    normalized_id = data[column('id')].map(normalized_text)
+    # The ID already defines the group. Compare its normalized value, so harmless
+    # whitespace/case differences do not manufacture a source conflict.
+    comparable = data[identity_columns].copy()
+    comparable[column('id')] = normalized_id
     data['duplicate_of'] = ''
     data['duplicate_id_conflict'] = False
+    data['provided_label_conflict'] = False
     data['canonical_record'] = True
-    for _, group in data.groupby(data[column('id')].map(normalized_text), sort=False):
+    for _, group in data.groupby(normalized_id, sort=False):
+        labels = [numeric_value(value) for value in group['provided_kType']]
+        if len({value for value in labels if value is not None}) > 1:
+            data.loc[group.index, 'provided_label_conflict'] = True
         if len(group) < 2:
             continue
         # Exact source equality after null normalization, not VIN equality.
-        if len(group[identity_columns].fillna('').drop_duplicates()) > 1:
+        if len(comparable.loc[group.index].fillna('').drop_duplicates()) > 1:
             data.loc[group.index, 'duplicate_id_conflict'] = True
-            data.loc[group.index, 'canonical_record'] = False
+            copies = group.index[1:]
+            data.loc[copies, 'canonical_record'] = False
+            data.loc[copies, 'duplicate_of'] = data.at[group.index[0], 'source_key']
         else:
             copies = group.index[1:]
             data.loc[copies, 'canonical_record'] = False

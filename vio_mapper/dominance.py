@@ -55,53 +55,22 @@ def criterion_sets(entry) -> tuple[frozenset, frozenset]:
     return agreed(entry, VERSION_CRITERIA), agreed(entry, VARIANT_CRITERIA)
 
 
-def dominates(first: tuple, second: tuple) -> bool:
-    """Rule D: a superset in both tiers, and strictly more in at least one.
+def sufficient(entry) -> tuple[bool, str, tuple]:
+    """Require a documented identity code or the complete criterion route.
 
-    Cross-tier trade-offs are left unresolved on purpose. Where one candidate
-    wins on version and another on variant, neither dominates and the row is
-    ambiguous -- resolving it would need a rate of exchange between the tiers,
-    which is the thing Annex I does not give. Measured over 712 rows across
-    three catalogue pairs, no such case ever arose, so nothing is being
-    abstained on that the data actually contains.
-    """
-    return (first[0] >= second[0] and first[1] >= second[1]
-            and (first[0] > second[0] or first[1] > second[1]))
+An officially decoded manufacturer model code takes priority because it is
+compared directly with the candidate's manufacturer model code. It can make
+a compatible candidate sufficient even when a registry specification is absent;
+it can never excuse a contradiction because only compatible candidates qualify.
 
-
-def separates(first: tuple, second: tuple) -> bool:
-    """Whether the project policy puts one agreement set ahead of another.
-
-Strict version supersets take precedence. Otherwise a superset in both tiers
-needs at least two additional variant agreements. This sibling brake was
-informed by synthetic cases; it is not an independently validated discriminator."""
-    if first[0] > second[0]:
-        return True
-    if second[0] > first[0]:
-        return False
-    if not dominates(first, second):
-        return False
-    return len(first[1] - second[1]) >= 2
-
-
-def undominated(sets: dict) -> list:
-    """Every candidate no rival separates from it, in kType order.
-
-    Reference order cannot change the answer: the relation is computed pairwise
-    and the survivors are sorted, so the same candidates in any order give the
-    same list.
-    """
-    return sorted(ktype for ktype in sets
-                  if not any(separates(sets[rival], sets[ktype])
-                             for rival in sets if rival != ktype))
-
-
-def sufficient(entry, *, pool: int) -> tuple[bool, str, tuple]:
-    """Require every comparable version agreement and at least one variant agreement.
-
-Missing capacity or a one-entry original pool additionally needs an identifier.
-These guards are provisional judgments; pool composition is not proof of identity.
+Without that code, every comparable version criterion and at least one variant
+criterion must agree. Missing capacity additionally needs an identifier. The
+requirement depends only on the source/candidate evidence: adding or removing
+unrelated catalogue rows must not change whether this candidate is sufficiently
+described.
 Return the verdict, explanation and fields needing more evidence."""
+    if entry.get('compatible') and entry.get('chassis_model_comparison') == 'agree':
+        return True, '', ()
     version, variant = criterion_sets(entry)
     missing = comparable_version(entry) - version
     if missing:
@@ -116,8 +85,6 @@ Return the verdict, explanation and fields needing more evidence."""
     if not capacity_comparable(entry) and not has_identifier(entry):
         return (False, 'capacity is not comparable and no structural identifier corroborates',
                 ('capacity',))
-    if pool < 2 and not has_identifier(entry):
-        return (False, 'the only candidate ever compared, with no structural identifier', ())
     return True, '', ()
 
 

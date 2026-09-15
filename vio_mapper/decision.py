@@ -15,6 +15,7 @@ from dataclasses import dataclass, field as dataclass_field
 
 import pandas as pd
 
+from .chassis_decoder import chassis_audit_columns
 from .config import (ACCEPTED_ON_DOMINANCE, ACCEPTED_ON_SCORE, ACCEPTED_ON_UNIQUENESS,
                      ALL_CANDIDATES_CONTRADICTED, ALL_CONTRADICTED, AMBIGUOUS, BELOW_THRESHOLD,
                      COMPARED_FIELDS, CONFLICT, CRITERION_SET, DISPLACEMENTLESS_FUELS,
@@ -30,8 +31,7 @@ from .config import (ACCEPTED_ON_DOMINANCE, ACCEPTED_ON_SCORE, ACCEPTED_ON_UNIQU
                      SEPARABLE_ONLY_BY_SCOPED_RULE,
                      SELF_CONTRADICTION, TIED_CANDIDATES, VIN_CONTRADICTION, core_conflict,
                      score_rules)
-from .dominance import (criterion_columns, criterion_sets, criterion_vector, sufficient,
-                        undominated)
+from .dominance import criterion_columns, criterion_vector, sufficient
 from .evidence import active_structural_codes, candidate_evidence, identifier_context
 from .normalization import (compact_code, model_year, normalized_text, numeric_value,
                             submodel_drive_category)
@@ -163,6 +163,27 @@ def identifier_proposal(details, anchors: AnchorState):
             'basis': ' + '.join(fields) + ' agree on ' + '; '.join(tokens)}
 
 
+def model_code_hint_proposal(details):
+    """One officially named model-code correspondence, for review only.
+
+    A proposal-only decoder is deliberately weaker than a candidate veto: its
+    agreement cannot make a candidate compatible, and its disagreement cannot
+    remove one. It merely names the one reference row carrying the same reviewed
+    manufacturer type value.
+    """
+    agreeing = [entry for entry in details
+                if entry.get('chassis_model_hint_comparison') == 'agree']
+    if len(agreeing) != 1:
+        return None
+    candidate = agreeing[0]
+    conflicts = sorted({core_conflict(field) for field in
+                        candidate['disagreements'].split('; ') if field})
+    return {'kType': candidate['KType'], 'conflicts': conflicts,
+            'basis': (f"{candidate['chassis_model_source_field']} manufacturer model-code hint "
+                      f"{candidate['chassis_model_code']} agrees with reference Type_design "
+                      f"{candidate['chassis_model_reference_codes']}")}
+
+
 def triage_lead(details, policy):
     """Triage only: name the one candidate a single field away from compatible.
 
@@ -186,6 +207,26 @@ def triage_lead(details, policy):
     production interval that cannot contain the vehicle suggests the wrong
     candidate altogether, not a near miss.
     """
+    # Marketing litres are deliberately a shortlist criterion, not a
+    # compatibility criterion.  Use them only when every gated candidate states
+    # a comparable value and the agreement genuinely narrows the pool.  Unknown
+    # values must never be silently eliminated.
+    litre_matches = [entry for entry in details
+                     if entry.get('submodel_capacity_litre') == 'agree']
+    litre_comparable = [entry for entry in details
+                        if entry.get('submodel_capacity_litre') in {'agree', 'disagree'}]
+    if (litre_matches and len(litre_comparable) == len(details)
+            and len(litre_matches) < len(details)):
+        alternatives = sorted(entry['KType'] for entry in litre_matches)
+        return {
+            'kType': None,
+            'field': 'submodel capacity',
+            'alternatives': alternatives,
+            'basis': (f"{column('submodel')} capacity agrees numerically with reference "
+                      f"Capacity_litre for {len(alternatives)} of {len(details)} candidates; "
+                      'decimal point and comma spellings are equivalent; shortlist only'),
+        }
+
     leads = []
     for entry in details:
         if entry['compatible'] or not entry['disagreements']:
@@ -365,6 +406,21 @@ def _candidate_availability_outcome(details, compatible, anchors, policy) -> Out
     return None
 
 
+def _compatible_model_code_hint_outcome(details, compatible) -> Outcome | None:
+    """Surface a unique model-code hint without letting it select a candidate."""
+    if len(compatible) < 2:
+        return None
+    proposal = model_code_hint_proposal(details)
+    if proposal is None or proposal['kType'] not in compatible:
+        return None
+    return Outcome(
+        AMBIGUOUS, None,
+        f"{len(compatible)} compatible candidates remain. {proposal['basis']}. This is the most "
+        'likely candidate for review, but the composite registry-code format and cross-catalogue '
+        'uniqueness are not established strongly enough for automatic assignment.',
+        NOT_SEPARATED, proposal=proposal, tied=sorted(compatible))
+
+
 def complete_version_evidence(entry, source_fuel) -> bool:
     """Agreement at both levels Regulation (EU) 2018/858 Annex I defines.
 
@@ -377,9 +433,7 @@ def complete_version_evidence(entry, source_fuel) -> bool:
     The variant requirement is not decoration. Capacity and fuel are gates the
     evidence floor already demands of every candidate, so "every version
     criterion agrees" would otherwise reduce to "power agrees" -- one scored
-    field. Measured against the 17,710-kType stress catalogue, 30 of 63 rows
-    this route admitted without it agreed on nothing beyond the two gates and
-    power. Requiring a variant criterion too means the catalogues describe the
+    field. Requiring a variant criterion too means the catalogues describe the
     same vehicle at both levels the approval regime distinguishes, which is a
     statement about the vehicle rather than about one number.
 
@@ -492,13 +546,12 @@ def _scored_outcome(details, ranking, leaders, anchors, policy, has_vin_facts,
     # Where one candidate stands alone and every version criterion the two
     # catalogues share agrees exactly, the evidence has discriminated as far as
     # these catalogues allow, whatever the total comes to.
-    # Uniqueness has to be earned. A sole survivor out of thirty candidates is a
-    # strong fact about the reference; a sole survivor out of one is no fact at
-    # all, because nothing was eliminated. Six of the stress catalogue's
-    # uniqueness acceptances had a pool of exactly one before this was required.
-    sole_candidate = (sum(1 for entry in details if entry['compatible']) == 1
-                      and len(details) > 1)
-    unique_route = sole_candidate and complete_version_evidence(winner, source_fuel)
+    # Sufficiency depends on the vehicle/candidate evidence rather than on how
+    # many unrelated siblings happen to be present in this catalogue extract.
+    sole_candidate = sum(1 for entry in details if entry['compatible']) == 1
+    chassis_route = winner['chassis_model_comparison'] == 'agree'
+    unique_route = sole_candidate and (complete_version_evidence(winner, source_fuel)
+                                       or chassis_route)
     if not ranking['score_threshold_met'] and not unique_route:
         # A lone survivor and a crowded field are different situations, and the
         # status has to say which. Where this candidate is the only one the
@@ -539,6 +592,14 @@ def _scored_outcome(details, ranking, leaders, anchors, policy, has_vin_facts,
         route = ACCEPTED_ON_SCORE
         reason = (f"Support score {winner['match_score']} >= {policy.accept_score:g}; {margin_text}. "
                   'Required evidence and contradiction checks passed; score is not a probability.')
+    elif chassis_route:
+        route = ACCEPTED_ON_UNIQUENESS
+        reason = (f"kType {winner['KType']} is the only compatible candidate after the documented "
+                  f"manufacturer model code {winner['chassis_model_code']} decoded from "
+                  f"{winner['chassis_model_source_field']} agreed with "
+                  f"reference Type_design {winner['chassis_model_reference_codes']}. "
+                  'The manufacturer-code comparison takes priority over missing specification '
+                  'evidence; every known contradiction still vetoes a candidate.')
     else:
         route = ACCEPTED_ON_UNIQUENESS
         reason = (f"kType {winner['KType']} is the only candidate in the reference that nothing "
@@ -560,8 +621,7 @@ def _dominance_outcome(details, anchors, has_vin_facts) -> Outcome:
     The weightless counterpart to `_scored_outcome`, reached only once the row
     and its identifiers are coherent and at least one candidate has survived
     every veto. It reads no weight, no cap, no threshold and no margin: a winner
-    is the one candidate that no rival separates from it under
-    `dominance.separates`, and it is accepted when its criterion set clears
+    must be the only compatible candidate and its criterion set must clear
     `dominance.sufficient`.
 
     The safeguards that are not weighting artefacts are kept in the same order
@@ -570,16 +630,23 @@ def _dominance_outcome(details, anchors, has_vin_facts) -> Outcome:
     a rival must not have fallen only on a comparison the winner escaped.
     """
     pool = [entry for entry in details if entry['compatible']]
-    sets = {entry['KType']: criterion_sets(entry) for entry in pool}
-    winners = undominated(sets)
+    # A strict agreement-set superset is not identity evidence when its sibling
+    # merely has a missing value. More complete catalogue rows cannot defeat
+    # still-compatible rivals. No cross-catalogue identifier correspondence in
+    # this prototype is backed by an official source that establishes uniqueness,
+    # so identifiers corroborate a sole compatible candidate but never remove a
+    # still-compatible sibling.
+    winners = [entry['KType'] for entry in pool]
     if len(winners) > 1:
         preference = scoped_structural_preference(details, winners)
         if preference is None:
             return Outcome(AMBIGUOUS, None,
-                           f'{len(winners)} candidates agree with criterion sets that no rival '
-                           'out-agrees: kTypes ' + '; '.join(map(str, winners))
-                           + '. Nothing in Regulation (EU) 2018/858 Annex I ranks one set above '
-                           'another here, and no arbitrary selection is made.',
+                           f'{len(winners)} compatible candidates remain: kTypes '
+                           + '; '.join(map(str, winners))
+                           + '. Differences caused only by missing or additional positive '
+                           'evidence do not establish identity. No official source supplied with '
+                           'this project establishes that a cross-catalogue identifier match is '
+                           'unique, so it cannot remove a still-compatible sibling.',
                            NOT_SEPARATED, tied=winners)
         return Outcome(AMBIGUOUS, None,
                        f"Candidates are tied on every catalogue specification. {preference['basis']}, "
@@ -618,13 +685,22 @@ def _dominance_outcome(details, anchors, has_vin_facts) -> Outcome:
     unearned = unearned_eliminations(details, winner)
     if unearned:
         return _unearned_outcome(details, winner, unearned)
-    reason = (f"kType {winner['KType']} agrees with a set of Annex I criteria no surviving "
-              f'candidate out-agrees: {criterion_vector(winner)} '
-              f"({winner['version_criteria_agreed'] or 'none'}; "
-              f"{winner['variant_criteria_agreed'] or 'none'}), out of {len(details)} candidates "
-              f'compared and {len(pool)} uncontradicted. Nothing is summed and no threshold is '
-              'applied. Agreement sets and sufficiency guards are provisional engineering rules '
-              'informed by Annex I attribute groups; they do not establish verified identity.')
+    if winner['chassis_model_comparison'] == 'agree':
+        reason = (f"kType {winner['KType']} is the only compatible candidate after the documented "
+                  f"manufacturer model code {winner['chassis_model_code']} decoded from "
+                  f"{winner['chassis_model_source_field']} agreed with "
+                  f"reference Type_design {winner['chassis_model_reference_codes']}, out of "
+                  f'{len(details)} candidates compared and {len(pool)} uncontradicted. The code '
+                  'comparison takes priority over missing criterion evidence; all explicit '
+                  'contradiction checks still apply.')
+    else:
+        reason = (f"kType {winner['KType']} is the only compatible candidate supported after "
+                  f'explicit contradiction checks: {criterion_vector(winner)} '
+                  f"({winner['version_criteria_agreed'] or 'none'}; "
+                  f"{winner['variant_criteria_agreed'] or 'none'}), out of {len(details)} candidates "
+                  f'compared and {len(pool)} uncontradicted. Nothing is summed and no threshold is '
+                  'applied. Agreement sets and sufficiency guards are provisional engineering rules '
+                  'informed by Annex I attribute groups; they do not establish verified identity.')
     if has_vin_facts:
         reason += ' Documented VIN evidence applied; see vin_helper_facts and Candidate_Evidence.'
     return Outcome(MATCHED, winner['KType'], reason, '', route=ACCEPTED_ON_DOMINANCE)
@@ -685,8 +761,8 @@ def assumptions_used(winner) -> list[str]:
     a reviewer can see what an acceptance rests on without re-deriving it. Read
     this as *contributed*, not as *was individually necessary*: a row can list an
     assumption it would still be accepted without, because another route to the
-    evidence floor also passes. tools/evaluate_dependencies.py measures necessity
-    by disabling each mechanism and re-running.
+    evidence floor also passes. Necessity requires a separate ablation run that
+    disables each mechanism and compares the outcomes.
 
     This is reporting only. Nothing here feeds back into whether a row was
     accepted, and the column is absent on every row that was not.
@@ -696,6 +772,8 @@ def assumptions_used(winner) -> list[str]:
         dependencies.append('power tolerance')
     if winner['vin_generation'] != 'unknown' or winner['vin_drive'] != 'unknown' or winner['vin_engine'] != 'unknown':
         dependencies.append('sourced VIN evidence')
+    if winner['chassis_model_comparison'] == 'agree':
+        dependencies.append('manufacturer chassis model code')
     if any(winner[f'{name}_tokens'] for name in identifiers_where('authoritative')):
         dependencies.append('structural identifier')
     if winner['explicit_engine_comparison'] == 'agree':
@@ -821,7 +899,8 @@ def decide(row, candidates, policy, *, include_score_diagnostics: bool = True) -
 
     outcome = (_source_conflict_outcome(row, decoded_vin, parsed_submodel, anchors)
                or _identifier_versus_specification_outcome(details, compatible, anchors)
-               or _candidate_availability_outcome(details, compatible, anchors, policy))
+               or _candidate_availability_outcome(details, compatible, anchors, policy)
+               or _compatible_model_code_hint_outcome(details, compatible))
     candidate_ids = sorted(compatible)
     if outcome is None:
         if not policy.use_scoring:
@@ -879,7 +958,8 @@ def decide(row, candidates, policy, *, include_score_diagnostics: bool = True) -
               # the command that made it and an acceptance has to be able to say
               # what it was decided by.
               'selection_rule': policy.selection,
-              **(ranking or {}), **identifier_context(row), **vin_audit_columns(decoded_vin),
+              **(ranking or {}), **identifier_context(row), **chassis_audit_columns(row),
+              **vin_audit_columns(decoded_vin),
               **submodel_audit_columns(parsed_submodel),
               'base_candidate_count': len(details),
               'compatible_candidate_count': len(compatible),
@@ -910,7 +990,7 @@ def _compare_all_candidates(row, candidates, policy, decoded_vin, parsed_submode
                         **{f'reference_{column}': candidate.get(column, pd.NA)
                            for column in EXPORTED_REFERENCE_COLUMNS}})
     for entry in details:
-        enough, shortfall, open_fields = sufficient(entry, pool=len(details))
+        enough, shortfall, open_fields = sufficient(entry)
         entry.update({'criterion_sufficient': enough,
                       'criterion_shortfall': shortfall,
                       'criterion_open_fields': '; '.join(open_fields)})

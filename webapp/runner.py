@@ -148,8 +148,7 @@ def row_detail(run: Run, source_key: str) -> dict:
     candidates = run.evidence
     if len(candidates) and 'source_key' in candidates.columns:
         candidates = candidates[candidates['source_key'] == source_key]
-        candidates = candidates.sort_values(['selected', 'compatible', 'KType'],
-                                            ascending=[False, False, True])
+        candidates = payload.order_candidates_for_review(rows.iloc[0], candidates)
     else:
         candidates = candidates.iloc[0:0]
     return {'row': payload.records(rows)[0],

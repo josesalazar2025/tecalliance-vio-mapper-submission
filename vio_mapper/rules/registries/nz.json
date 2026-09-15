@@ -82,7 +82,7 @@
         "expected_in_reference": true
       },
       "CHASSIS7": {
-        "kind": "delimited_code",
+        "kind": "chassis_prefix",
         "manufacturer_assigned": false,
         "authoritative": true,
         "expected_in_reference": false,
@@ -216,7 +216,7 @@
     "source_kind": "specification"
   },
   "registry_body_types": {
-    "description": "Official NZTA body types. Keys are the wording the published register uses; codes and official_name are VIRM Table 2-2-8. The table publishes 24 distinct body codes; there are 26 keys here because the register spells code OR three different ways (AG MACHINE - OTHER, OTHER AGRICULTURCAL, NON HIGHWAY TRAILER-OTHER). All 26 register spellings present in the 2020 register (181,790 rows) appear here, and each carries its published code.",
+    "description": "Official NZTA body types. Keys are the wording the published register uses; codes and official_name are VIRM Table 2-2-8. The table publishes 24 distinct body codes; there are 26 keys here because the register spells code OR three different ways (AG MACHINE - OTHER, OTHER AGRICULTURCAL, NON HIGHWAY TRAILER-OTHER). Each spelling carries its published code.",
     "provenance": "official",
     "source": "nzta_virm_attributes",
     "values": {
@@ -673,7 +673,7 @@
     "categories": "fuel",
     "source": "nzta_mvr_fields",
     "decomposed_from": "Decomposed from source_fuel, one dict whose keys were both register MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. This section keeps only the keys the register emits; the other side is stated by catalogue_fuel in its own file, and the two meet only in categories.json. Every value and note is the original's, verbatim, and its description is kept verbatim as inherited_description -- it describes both sides, because the section it came from stated both.",
-    "inherited_description": "NZTA MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. Every key is a string one of the two catalogues actually emits: the register's MOTIVE_POWER values (see nzta_motive_power) and the extract's Fuel_type values (see tecdoc_fuel). NZTA defines MOTIVE_POWER as the primary fuel source and records hybrids in it directly, so ALTERNATIVE_MOTIVE_POWER is not consulted: it is populated on 22 of 181,790 rows in the 2020 cohort, and on 19 of those it names a gas blend rather than the hybrid, which MOTIVE_POWER already carries. Plug-in and non-plug-in hybrids share one category because the reference vocabulary does not separate them; a reference listing both would tie and go to review rather than pick one. LPG and CNG are their own categories, distinct from the reference's combined Petrol/LPG, so the two disagree rather than falsely agreeing. Fuel-cell, range-extender and OTHER labels are deliberately absent: they have no reference counterpart, and unknown withholds acceptance whereas a guess could grant it."
+    "inherited_description": "NZTA MOTIVE_POWER labels and RDM Fuel_type labels folded into one internal category. Every key is a string one of the two catalogues emits. NZTA defines MOTIVE_POWER as the primary fuel source and records hybrids directly, so ALTERNATIVE_MOTIVE_POWER is not consulted. Plug-in and non-plug-in hybrids share one category because the reference vocabulary does not separate them. LPG and CNG remain distinct from the reference's combined Petrol/LPG. Fuel-cell, range-extender and OTHER labels are absent because no reviewed reference correspondence establishes a category; they remain unknown."
   },
   "registry_bodies": {
     "values": {
@@ -717,7 +717,7 @@
   "report_notes": {
     "description": "Assumptions the performance report must state because they are this register's, not the matcher's. Printed verbatim in the Evaluation limits section; a registry that declares none prints none.",
     "values": [
-      "NZTA defines VEHICLE_YEAR as \"year of manufacture or model year - if unknown, year of first registration\". No field distinguishes the three, so a year earlier than production start blocks acceptance (impossible under every reading) while a later year stays eligible (legitimate under the first-registration reading) with its lag exported. Missing end dates are open-ended.",
+      "NZTA defines VEHICLE_YEAR as \"year of manufacture or model year - if unknown, year of first registration\". No field distinguishes the three. The maintained policy excludes a candidate whose Construction_from year is later than VEHICLE_YEAR, while Construction_to remains non-gating because first registration may occur after production. Missing end dates are open-ended.",
       "7AT VINs are not manufacturer-code or production-year evidence. PREVIOUS_COUNTRY and IMPORT_STATUS supply context, not score bonuses."
     ],
     "provenance": "mixed",

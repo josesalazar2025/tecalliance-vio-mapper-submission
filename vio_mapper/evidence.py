@@ -12,11 +12,11 @@ import re
 import pandas as pd
 
 from . import submodel as submodel_rules_module
+from .chassis_decoder import candidate_chassis_evidence, decode_chassis_model
 from .config import (authority_assigned_prefix, authority_assigned_vin_prefixes,
-                     known_reference_structures,
                      DISPLACEMENTLESS_FUELS, column, identifiers, identifiers_of_kind,
                      source_field,
-                     identifiers_where, vin_column, vin_value,
+                     identifiers_where, vin_value,
                      VETO_FIELDS, vocabularies)
 from .normalization import (code_tokens, compact_code, compare_values, displacement_cc,
                             catalogue_fuel_category, mercedes_variant, model_year,
@@ -27,16 +27,12 @@ from .vin_evidence import candidate_vin_evidence, vin_context
 # Mercedes writes M/OM prefixes on engine families that the source omits.
 MERCEDES_ENGINE_PREFIX = re.compile(r'^(OM|M)')
 # Scoped, dataset-derived Hyundai format: a four-character G/D-series code at the
-# start of the engine number, terminated by a separator or the end of the field.
+# start of the engine number, followed by the serial, a separator, or the end.
 # Declared once because both the comparison below and the decision key derive
 # the engine serial away through it; if the two disagreed, two rows could share
 # a decision key while the algorithm treated them differently.
 HYUNDAI_ENGINE_CODE = re.compile(r'^([GD][34][A-Z]{2})(?:[A-Z0-9]|[- /]|$)')
 COMPLETE_HYUNDAI_CODE = re.compile(r'[GD][34][A-Z]{2}')
-# Mercedes VIN positions 4-9 and the MVMA six-digit prefix. Deliberately not an
-# unrestricted search of arbitrary VIN substrings.
-MERCEDES_VIN = re.compile(r'(?:WDD|W1K)[0-9]{6}[A-Z0-9]{2}')
-MERCEDES_MVMA_PREFIX = re.compile(r'^(\d{6})')
 MINIMUM_CODE_LENGTH = 4
 
 
@@ -143,16 +139,14 @@ def identifier_context(row) -> dict:
 def structural_codes(row) -> dict[str, set[str]]:
     """Comparable structural codes the source row states, per identifier field."""
     codes: dict[str, set[str]] = {name: set() for name in identifiers()}
-    vin_field = vin_column()
-    manufacturer_code = next(iter(identifiers_of_kind('manufacturer_model_code')), None)
-    if normalized_text(source_field(row, 'make')) == 'MERCEDES-BENZ':
-        vin = compact_code(vin_value(row))
-        if vin and not authority_assigned_prefix(vin) and MERCEDES_VIN.fullmatch(vin):
-            codes[vin_field].add(vin[3:9])
-        if manufacturer_code:
-            match = MERCEDES_MVMA_PREFIX.match(normalized_text(row.get(manufacturer_code)))
-            if match:
-                codes[manufacturer_code].add(match.group(1))
+    decoded_chassis = decode_chassis_model(row)
+    # Proposal-only decoders are intentionally excluded from the authoritative
+    # identifier machinery. Otherwise their value could anchor, veto or satisfy
+    # a candidate through the generic identifier comparisons below.
+    if (decoded_chassis['model_code']
+            and decoded_chassis.get('decision_role') == 'candidate_veto'
+            and decoded_chassis['source_field'] in codes):
+        codes[decoded_chassis['source_field']].add(decoded_chassis['model_code'])
     # Delimited chassis/model codes can be compared without decoding a VIN.
     for name in identifiers_of_kind('delimited_code'):
         for token in code_tokens(row.get(name)):
@@ -174,12 +168,11 @@ def temporal_evidence(row, candidate, policy) -> dict:
     year of first registration", and no field says which of the three a given row
     carries. The asymmetric treatment follows from that ambiguity:
 
-    A year before production start is impossible under all three readings, so it
-    blocks automatic acceptance. A year after production end is a contradiction
-    under the first two readings but legitimate under the third, since unsold
-    stock can be first registered years after it was built; it therefore stays
-    eligible and the lag is exported for review rather than vetoed. Candidates
-    remain in the audit trail either way. Unknown years are neutral, and no
+    A year outside the reference production interval is an apparent chronology
+    inconsistency, not an automatic contradiction. The official registry
+    definition allows three meanings and the supplied sources do not establish
+    universal cross-catalogue date semantics. The relationship is exported for
+    review and remains neutral for matching. Unknown years are neutral, and no
     registration-delay cutoff is invented.
     """
     registered = model_year(source_field(row, 'year'))
@@ -189,7 +182,7 @@ def temporal_evidence(row, candidate, policy) -> dict:
     if registered is None:
         relation = 'unknown registration year'
     elif registered < start:
-        relation = 'registration before production start: review chronology'
+        relation = 'year before production start: apparent inconsistency for review'
     elif end is not None and registered > end:
         relation = 'registration after production end: production date unknown'
         lag = registered - end
@@ -198,8 +191,8 @@ def temporal_evidence(row, candidate, policy) -> dict:
     overlaps = registered is not None and registered >= start and (end is None or registered <= end)
     return {'year_relationship': relation,
             'registration_after_end_years': lag,
-            'chronology': ('disagree' if registered is not None and registered < start
-                           else 'unknown' if registered is None else 'not contradicted'),
+            'chronology': ('unknown' if registered is None or registered < start
+                           else 'not contradicted'),
             'year_interval_overlap': overlaps,
             'temporal_points': policy.year_weight if overlaps else 0}
 
@@ -233,6 +226,7 @@ def candidate_evidence(row, candidate, policy, decoded_vin=None, parsed_submodel
     if evidence['explicit_engine_comparison'] != 'unknown':
         evidence['engine'] = evidence['explicit_engine_comparison']
     evidence.update(candidate_vin_evidence(decoded_vin, candidate))
+    evidence.update(candidate_chassis_evidence(row, candidate))
     # A decoded specification fills or confirms the SAME score component, never
     # an additional identity bonus. Both sources must remain compatible.
     for field in ('drive', 'engine'):
@@ -305,23 +299,17 @@ def _drive_evidence(drive, candidate) -> str:
 def _body_evidence(row, candidate) -> str:
     """One registration-body taxonomy, shared with the SUBMODEL checks.
 
-    Absence from the permitted set means two different things, and only one of
-    them is a contradiction. Where the structure is one this project has a
-    vocabulary for, its absence is a genuine disagreement: the taxonomy says
-    that registration body does not cover that structure. Where the structure is
-    a term no recorded vocabulary contains, nothing about it is known, and
-    reporting a contradiction would state as evidence something never
-    established -- a false veto, which does not merely lose a row but can
-    redirect it onto a different candidate.
+    The shipped crosswalk records approved positive correspondences only. Two
+    different mapped categories therefore do not establish a negative
+    correspondence: the pair stays unknown unless a future reviewed rule table
+    explicitly records it as incompatible.
 
     Both sides map their own publisher's value into a body category, and the
     verdict compares the two categories. Neither vocabulary names the other's
     values, so each is checkable against its own publisher.
 
-    The vocabulary judged against is itself incomplete -- see tecdoc_structure,
-    marked partial -- so the unknown branch is expected to be taken often. That
-    is the honest outcome: unknown earns no points and vetoes nothing, leaving
-    the decision to evidence the project can actually justify.
+    Unknown earns no points and vetoes nothing, leaving the decision to evidence
+    the project can justify.
     """
     vocabulary = vocabularies()
     category = vocabulary['registry_bodies'].get(normalized_text(source_field(row, 'body')))
@@ -329,9 +317,7 @@ def _body_evidence(row, candidate) -> str:
     if category is None or not body:
         return 'unknown'
     structure = vocabulary['catalogue_structures'].get(body)
-    if structure is not None:
-        return 'agree' if structure == category else 'disagree'
-    return 'disagree' if body in known_reference_structures() else 'unknown'
+    return 'agree' if structure is not None and structure == category else 'unknown'
 
 
 def _identifier_evidence(row, candidate, policy) -> dict:
@@ -367,7 +353,12 @@ def _family_context(row, candidate) -> str:
 def _evidence_floor_route(evidence, source_fuel) -> str:
     """Which acceptance route this candidate meets, or '' for none.
 
-    Exact fuel agreement is required by every route; it is the one comparison
+    A documented manufacturer chassis model code is the direct route: it is
+    compared with the candidate's manufacturer model code and applies only
+    after every contradiction veto has passed. Missing or unsupported chassis
+    values never enter this branch.
+
+    Exact fuel agreement is required by every specification route; it is the one comparison
     that is always available and always meaningful. What must accompany it
     depends on whether the vehicle has a displacement at all.
 
@@ -389,6 +380,8 @@ def _evidence_floor_route(evidence, source_fuel) -> str:
     reference carries no identifier for its electric kTypes, those vehicles stay
     unresolved, which is the correct outcome when nothing distinguishes them.
     """
+    if evidence['compatible'] and evidence['chassis_model_comparison'] == 'agree':
+        return 'documented manufacturer chassis model code'
     if evidence['fuel'] != 'agree':
         return ''
     specific_code = any(evidence[f'{name}_tokens'] for name in identifiers_where('authoritative'))

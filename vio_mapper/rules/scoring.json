@@ -74,11 +74,12 @@
       "engine": "engine",
       "vin_engine": "engine",
       "vin_generation": "generation",
+      "chassis_model_comparison": "chassis model code",
       "chronology": "chronology"
     }
   },
   "unproposable_conflicts": {
-    "description": "A chronology contradiction suggests the wrong production interval altogether, so it is never downgraded to a proposal, however strong the identifiers are.",
+    "description": "Reserved for chronology conflicts in diagnostic policies. The maintained gate removes candidates starting after the registry year before evidence is built, and does not treat a year after production end as a contradiction.",
     "values": [
       "chronology"
     ]
@@ -164,9 +165,9 @@
         "how_it_could_be_wrong": "It could not; this is a limit on the citation, not a claim. power_tolerance_pct stays at 0 by default and remains the data owner's decision."
       },
       "dominance_policy": {
-        "inference": "Version precedence, the two-variant sibling brake, variant sufficiency and the pool-size identifier guard are provisional matching rules.",
+        "inference": "Requiring one compatible candidate, complete comparable version agreement and one variant agreement is a provisional matching rule. Additional positive evidence does not eliminate a compatible sibling, and catalogue size does not alter sufficiency.",
         "rests_on": "The cited attribute taxonomy and synthetic behavioral tests; neither establishes a statistical evidence ordering or a kType identification rule.",
-        "how_it_could_be_wrong": "Missing values and pool composition can favor a candidate whose recorded agreement is more complete without making its vehicle identity correct. Domain adjudication is needed."
+        "how_it_could_be_wrong": "Even a sole compatible candidate may not be the correct vehicle when the reference is incomplete. Independent domain adjudication is needed."
       }
     },
     "not_grounded": {
@@ -179,10 +180,10 @@
         "year_weight: what a production-interval overlap is worth",
         "the identity group being all-or-nothing rather than graded",
         "the specific composition of each evidence floor route",
-        "the uniqueness route's sufficiency: that agreement at both Annex I levels plus an eliminated pool is enough to assign",
+        "the uniqueness route's sufficiency: that one compatible candidate with agreement at both Annex I levels is enough to assign",
         "that an identifier match alone may never accept a row, however strong the code"
       ],
-      "note": "All weights and cutoffs remain uncalibrated. A weighted sum assumes a common support scale. Dominance avoids that sum but retains judgments about precedence, sibling separation and sufficient evidence; neither approach has measured general accuracy on this dataset."
+      "note": "All weights and cutoffs remain uncalibrated. A weighted sum assumes a common support scale. The default criterion policy avoids that sum but retains judgments about sufficient evidence; neither approach has measured general accuracy on this dataset."
     }
   },
   "uncomparable_criteria": {
@@ -270,6 +271,6 @@
     "description": "The two ways a candidate may be accepted. They answer different questions and neither subsumes the other, which is why there are two rather than one threshold that tries to do both.",
     "support score": "The total reaches the configured threshold and leads the next compatible candidate by the configured margin. Measures how MUCH evidence there is.",
     "sole candidate, complete version evidence": "Rivals existed and every one was contradicted; the survivor agrees on every version-defining criterion the two catalogues share (Annex I 1.3.1(b)(c)(d) -- capacity, fuel, power) and on at least one variant criterion (1.2.1(a)(b)(d) -- body, the power plant, powered axles). Measures whether the evidence DISCRIMINATED, which a total cannot express: a sole survivor out of thirty and a leader among five score the same. It bypasses the threshold deliberately, because the threshold answers the other question. It does not bypass any veto, the evidence floor, or the identifier-coherence checks.",
-    "guards": "Two, both added after measurement against the 17,710-kType stress catalogue. The pool must have held more than one candidate -- six acceptances there had a pool of exactly one, where 'sole survivor' discriminates nothing. And a variant criterion must agree, because capacity and fuel are gates the floor already demands, so 'every version criterion agrees' would otherwise reduce to 'power agrees': 30 of 63 acceptances there rested on nothing else."
+    "guards": "A variant criterion must agree because capacity and fuel are gates the floor already demands; otherwise complete version evidence would reduce to power as the only additional agreement. Sufficiency is independent of catalogue-pool size, so adding an irrelevant contradictory sibling cannot change the answer."
   }
 }
