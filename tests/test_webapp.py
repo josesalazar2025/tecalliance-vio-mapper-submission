@@ -93,6 +93,56 @@ def test_primary_api_rejects_policy_overrides(client):
     assert 'Policy overrides are not supported' in response.json()['detail']
 
 
+def test_candidate_review_order_puts_explicit_likely_candidates_first():
+    row = pd.Series({
+        'mapped kType': None,
+        'proposed_kType': 30,
+        'triage_lead_kType': None,
+        'triage_lead_alternatives': '20',
+        'remaining_kTypes': '10',
+    })
+    candidates = pd.DataFrame([
+        {'KType': 40, 'selected': False, 'compatible': False,
+         'disagreements': 'capacity', 'version_criteria_agreed': 'fuel; power',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 5},
+        {'KType': 10, 'selected': False, 'compatible': True,
+         'disagreements': '', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 2},
+        {'KType': 20, 'selected': False, 'compatible': False,
+         'disagreements': 'power', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 1},
+        {'KType': 30, 'selected': False, 'compatible': False,
+         'disagreements': 'body; power', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': '', 'power_difference_kw': 8},
+    ])
+
+    ordered = payload.order_candidates_for_review(row, candidates)
+
+    assert ordered['KType'].tolist() == [30, 20, 10, 40]
+    assert ordered['review_priority'].tolist() == [
+        'most likely', 'shortlist', 'compatible', 'other']
+    assert ordered['review_rank'].tolist() == [1, 2, 3, 4]
+
+
+def test_unflagged_candidates_rank_by_contradictions_then_agreement():
+    row = pd.Series({})
+    candidates = pd.DataFrame([
+        {'KType': 3, 'selected': False, 'compatible': False,
+         'disagreements': 'capacity; power', 'version_criteria_agreed': 'fuel',
+         'variant_criteria_agreed': '', 'power_difference_kw': 2},
+        {'KType': 2, 'selected': False, 'compatible': False,
+         'disagreements': 'power', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 4},
+        {'KType': 1, 'selected': False, 'compatible': False,
+         'disagreements': 'power', 'version_criteria_agreed': 'fuel',
+         'variant_criteria_agreed': '', 'power_difference_kw': 1},
+    ])
+
+    ordered = payload.order_candidates_for_review(row, candidates)
+
+    assert ordered['KType'].tolist() == [2, 1, 3]
+
+
 def test_runner_builds_the_same_review_artifacts_without_proprietary_fixtures(
         tmp_path: Path, monkeypatch):
     reference = tmp_path / 'reference.xlsx'
@@ -110,5 +160,8 @@ def test_runner_builds_the_same_review_artifacts_without_proprietary_fixtures(
         detail = runner.row_detail(run, 'source.csv!2')
         assert detail['row']['mapped kType'] == 1
         assert len(detail['candidates']) == 2
+        assert detail['candidates'][0]['KType'] == 1
+        assert detail['candidates'][0]['review_rank'] == 1
+        assert detail['candidates'][0]['review_priority'] == 'selected'
     finally:
         run.dispose()

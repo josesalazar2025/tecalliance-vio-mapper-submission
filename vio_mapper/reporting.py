@@ -40,12 +40,22 @@ EVIDENCE_DIAGNOSTIC_COLUMNS = (
 # ride on the answer, what the algorithm found, what it is pointing at, and the
 # values the reviewer has to rule on.
 REVIEW_QUEUE_COLUMNS = ('vehicles', 'make', 'model', 'submodel', 'status', 'why',
-                        'candidates', 'decide_on', 'identifier_evidence', 'question', 'IDs')
+                        'candidates', 'decide_on', 'identifier_evidence', 'question', 'IDs',
+                        'source_rows')
+
+
+def _normalized_ids(frame: pd.DataFrame) -> pd.Series:
+    """The identity policy used by duplicate detection, counts and grouping."""
+    return frame[column('id')].map(normalized_text)
+
+
+def _distinct_vehicles(frame: pd.DataFrame) -> pd.DataFrame:
+    return frame.loc[~_normalized_ids(frame).duplicated()].copy()
 
 
 def performance_report(results: pd.DataFrame, metadata: dict) -> str:
     """Assemble the markdown report from the finished results frame."""
-    unique = results.drop_duplicates(column('id'))
+    unique = _distinct_vehicles(results)
     accepted = int(results['count_in_vio'].sum())
     lines = ['# Mapping performance', '',
              f"Run: {metadata['run_utc']}; algorithm {metadata['algorithm_version']}.", '',
@@ -65,14 +75,14 @@ def performance_report(results: pd.DataFrame, metadata: dict) -> str:
 
 
 def _proposal_section(unique: pd.DataFrame) -> list[str]:
-    """Rows the identifiers name but the specifications refuse to confirm."""
+    """Rows where advisory evidence names a candidate for human review."""
     proposals = unique[unique['Match_Status'] == PROPOSED]
     if not len(proposals):
         return []
     lines = [f'**{len(proposals)} distinct vehicles are proposals awaiting human confirmation.** '
-             'Two or more distinct identifier fields agree on one kType that is contradicted on exactly one '
-             'specification. They are not assigned, not counted in VIO, and remain in the review queue; the '
-             'conflicting field needs reconciling with the data owner before any of them can be accepted.', '',
+             'Advisory identifier or manufacturer-model-code evidence names one likely kType, but a '
+             'specification contradicts it. They are not assigned, not counted in VIO, and remain in the '
+             'review queue; the conflicting field needs reconciling before any can be accepted.', '',
              '| Model | Submodel | Proposed kType | Conflicting field | Identifier basis | Distinct IDs |',
              '|---|---|---|---|---|---:|']
     for key, group in proposals.groupby([column('model'), column('submodel'), 'proposed_kType',
@@ -165,7 +175,7 @@ def _status_section(results: pd.DataFrame, unique: pd.DataFrame, accepted: int) 
              '| Status | Worksheet rows | Distinct IDs |', '|---|---:|---:|']
     for status in ALL_STATUSES:
         subset = results[results['Match_Status'] == status]
-        lines.append(f"| {status} | {len(subset)} | {subset[column('id')].nunique()} |")
+        lines.append(f"| {status} | {len(subset)} | {_normalized_ids(subset).nunique()} |")
     return lines
 
 
@@ -230,10 +240,14 @@ def selection_description(policy) -> str:
         return ('Rules-only: requires a unique compatible candidate after identifier narrowing, '
                 'sufficient evidence and the source/identifier conflict checks. Scores are diagnostic.')
     if policy.selection == 'dominance':
-        return ('Dominance: compares agreement sets, with version precedence and a sibling brake. '
-                'Acceptance requires a unique winner, agreement on every comparable version criterion '
-                'and at least one variant criterion, plus identifier guards for missing capacity or '
-                'a one-entry original pool. Conflict and unearned-elimination checks also apply. '
+        return ('Criterion policy: acceptance requires exactly one compatible candidate. A documented '
+                'manufacturer model code decoded from a scoped identifier and agreeing with the reference takes priority over '
+                'missing criterion evidence; a documented disagreement remains a veto and an absent '
+                'or unsupported code is neutral. Without that code, every comparable version criterion '
+                'and at least one variant criterion must agree. Additional '
+                'positive evidence cannot eliminate a compatible sibling, catalogue size does not '
+                'change sufficiency, and missing capacity still requires a structural identifier. '
+                'Conflict and unearned-elimination checks also apply. '
                 'These are provisional engineering rules, not fitted or calibrated estimates.')
     return ('Weighted score: uses a support threshold and margin, or the sole-candidate complete-version '
             'route that bypasses the threshold. Both routes require the evidence floor and conflict '
@@ -248,9 +262,10 @@ def _decision_policy_section(metadata: dict) -> list[str]:
     if policy.use_scoring and policy.selection == 'score':
         lines += [f'Acceptance threshold: **{policy.accept_score:g}/{attainable_score():g}**; '
                   f'minimum margin: **{policy.min_margin:g} points**.', '']
-    lines += [f'Year mode: `{policy.year_mode}`. Soft mode generates the pool from make/model and '
-              'blocks acceptance before production start; a year after production end stays eligible. '
-              'Gate mode additionally filters by the production interval.', '',
+    lines += [f'Year mode: `{policy.year_mode}`. Gate mode excludes candidates whose '
+              '`Construction_from` year is later than the registry year. It does not gate on '
+              '`Construction_to`, because the registry year may be first-registration year. '
+              'Soft mode retains every make/model candidate for sensitivity analysis.', '',
               f'Sourced VIN helper: {"enabled" if policy.use_vin_helper and policy.use_identifiers else "disabled"}. '
               'Reviewed VIN facts can corroborate specifications or contradict candidates. '
               'Reviewed VIN evidence may support or block an assignment; see docs/algorithm.md.', '']
@@ -265,14 +280,18 @@ def _evaluation_limits_section(results: pd.DataFrame, unique: pd.DataFrame) -> l
             f"{int(agreement.eq('agree').sum())} agree, {int(agreement.eq('disagree').sum())} disagree, "
             f"{int(agreement.eq('unassigned').sum())} unassigned. "
             f'The labels cover {labeled["provided_kType"].nunique()} kType(s) and do not measure general accuracy.',
+            f"- Conflicting provided labels within a normalized vehicle ID: "
+            f"{_normalized_ids(results[results['provided_label_conflict']]).nunique()}.",
             f"- Exact duplicate copies retained but excluded from VIO: {int(results['duplicate_of'].ne('').sum())}.",
-            '- Legacy structural encodings, fuel/body correspondences, and the power near-match policy remain dataset-derived assumptions. '
-            'New VIN fields have source provenance; their reference comparisons still need independent validation.',
+            '- Dataset-derived structural parsing and the power near-match policy are review context, not ground truth. '
+            'Body agreement is limited to official names shared by both publishers; unreviewed pairs remain unknown. '
+            'VIN facts carry source provenance, while their reference comparisons still need independent validation.',
             # Whatever this register says about itself; another register's file
             # states its own, and one that states none prints none.
             *(f'- {note}' for note in registry_report_notes()),
             '- Transmission is not validated because the reference lacks transmission data.',
-            '- Complete Hyundai engine prefixes are compared as a scoped dataset-derived format rule; other unrecognized formats remain unknown.',
+            '- Complete Hyundai engine prefixes are compared as a scoped dataset-derived format rule. They can corroborate '
+            'a sole compatible candidate but cannot eliminate a still-compatible sibling; other formats remain unknown.',
             '- Assessment is limited to the supplied data and the reviewed VIN helper. Unresolved cases remain unresolved; '
             'no additional ground-truth examples are assumed.', '',
             "See the workbook's Candidate_Evidence sheet for rejected alternatives and the Results sheet for row-level reasons. "
@@ -297,8 +316,8 @@ def scoring_policy_frame(policy) -> pd.DataFrame:
          'meaning': 'Specific Type_design match counted once across all identifier fields; never family substring hits or 7AT.'},
         {'item': 'registration year overlap', 'points_or_setting': policy.year_weight,
          'meaning': 'Overlap is weak support. Outside interval or missing: zero points; early-registration veto is separate.'},
-        {'item': 'registration before production', 'points_or_setting': 'review veto',
-         'meaning': 'Cannot automatically accept; candidate retained for audit. Late registration remains eligible.'},
+        {'item': 'year outside production interval', 'points_or_setting': 'review context',
+         'meaning': 'Apparent chronology inconsistency; neutral for default matching because field semantics are mixed.'},
         {'item': 'explicit engine code conflict', 'points_or_setting': 'veto',
          'meaning': 'Scoped complete Hyundai prefixes and documented VIN comparisons; unknown formats stay unknown.'},
         {'item': 'power tolerance', 'points_or_setting': f'{policy.power_tolerance_pct:g}% of reference',
@@ -311,7 +330,7 @@ def scoring_policy_frame(policy) -> pd.DataFrame:
                     'Names a candidate for review only; never makes a candidate compatible, '
                     'earns no points and accepts nothing.'},
         {'item': 'year mode', 'points_or_setting': policy.year_mode,
-         'meaning': 'Soft mode uses make/model gates only. Gate mode is an explicit legacy comparison.'},
+         'meaning': 'Gate mode excludes candidates starting after the registry year; soft mode is diagnostic.'},
         {'item': 'missing evidence', 'points_or_setting': 0,
          'meaning': 'No normalization by available fields; no presence bonus.'},
         {'item': 'contradictions', 'points_or_setting': 'veto',
@@ -363,7 +382,7 @@ def _review_question(row, candidates: str) -> str:
     """The one thing this decision is asking a human to rule on."""
     status, fields = row['Match_Status'], row['Review_Fields']
     if status == PROPOSED:
-        return (f'Identifiers point at kType {candidates}. Is the {fields} difference a catalogue '
+        return (f'Advisory evidence proposes kType {candidates}. Is the {fields} difference a catalogue '
                 'discrepancy, or is this a different vehicle?')
     if status == AMBIGUOUS:
         return f'Which of kTypes {candidates} is correct? See decide_on for how they differ.'
@@ -390,7 +409,7 @@ def review_queue(results: pd.DataFrame) -> pd.DataFrame:
     by how many vehicles ride on it. Grouping is by the columns that define the
     decision, so two vehicles asking the same question appear once.
     """
-    unresolved = results[results['Match_Status'].ne(MATCHED) & results['canonical_record']]
+    unresolved = results[results['Match_Status'].ne(MATCHED)]
     if unresolved.empty:
         return pd.DataFrame(columns=list(REVIEW_QUEUE_COLUMNS))
     keys = [column('make'), column('model'), column('submodel'), 'Match_Status',
@@ -398,12 +417,32 @@ def review_queue(results: pd.DataFrame) -> pd.DataFrame:
             'triage_lead_kType', 'triage_lead_alternatives', 'remaining_kTypes',
             'compatible_candidate_count', 'differentiating_fields', 'blocking_values']
     rows = []
-    for _, group in unresolved.fillna({'Review_Fields': '', 'differentiating_fields': '',
-                                       'blocking_values': ''}).groupby(keys, dropna=False, sort=False):
+    conflicts = unresolved[unresolved['duplicate_id_conflict']]
+    for _, group in conflicts.groupby(_normalized_ids(conflicts), sort=False):
+        first = group.iloc[0]
+        ids = list(dict.fromkeys(group[column('id')].astype(str)))
+        source_rows = list(dict.fromkeys(group['source_key'].astype(str)))
+        rows.append({
+            'vehicles': 1,
+            'make': first[column('make')], 'model': first[column('model')],
+            'submodel': first[column('submodel')],
+            'status': first['Match_Status'],
+            'why': first['Review_Category'],
+            'candidates': '—',
+            'decide_on': 'Reconcile the differing source values in the linked rows.',
+            'identifier_evidence': _identifier_codes(first),
+            'question': 'Which linked source row contains the correct vehicle facts?',
+            'IDs': '; '.join(ids),
+            'source_rows': '; '.join(source_rows),
+        })
+    ordinary = unresolved[unresolved['canonical_record'] & ~unresolved['duplicate_id_conflict']]
+    for _, group in ordinary.fillna({'Review_Fields': '', 'differentiating_fields': '',
+                                     'blocking_values': ''}).groupby(keys, dropna=False, sort=False):
         first = group.iloc[0]
         candidates, standing = _candidate_summary(first)
         scope = f" ({first['Review_Fields_scope']})" if first['Review_Fields_scope'] else ''
         ids = sorted(group[column('id')].astype(str))
+        source_rows = sorted(group['source_key'].astype(str))
         rows.append({
             'vehicles': len(ids),
             'make': first[column('make')], 'model': first[column('model')],
@@ -416,6 +455,8 @@ def review_queue(results: pd.DataFrame) -> pd.DataFrame:
             'identifier_evidence': first['proposal_basis'] or _identifier_codes(first),
             'question': _review_question(first, candidates),
             'IDs': '; '.join(ids if len(ids) <= 12 else ids[:12] + [f'... +{len(ids) - 12} more']),
+            'source_rows': '; '.join(source_rows if len(source_rows) <= 12 else
+                                    source_rows[:12] + [f'... +{len(source_rows) - 12} more']),
         })
     queue = pd.DataFrame(rows, columns=list(REVIEW_QUEUE_COLUMNS))
     return queue.sort_values('vehicles', ascending=False, kind='stable').reset_index(drop=True)
@@ -470,7 +511,9 @@ def build_sheets(results: pd.DataFrame, evidence: pd.DataFrame, policy, metadata
            .rename('distinct_vehicle_count').reset_index())
     counts = (results.groupby('Match_Status')
               .agg(worksheet_rows=(column('id'), 'size'),
-                    distinct_IDs=(column('id'), 'nunique')).reset_index())
+                    distinct_IDs=(column('id'),
+                                  lambda values: values.map(normalized_text).nunique()))
+              .reset_index())
     published_results = results.drop(columns=list(RESULT_DIAGNOSTIC_COLUMNS), errors='ignore')
     published_evidence = evidence.drop(columns=list(EVIDENCE_DIAGNOSTIC_COLUMNS), errors='ignore')
     frames = {'Results': published_results, 'Candidate_Evidence': published_evidence,

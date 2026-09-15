@@ -6,6 +6,7 @@ from pathlib import Path
 
 from vio_mapper.config import PROJECT_ROOT, RULES_DIR, vin_rules_path
 from vio_mapper.vin_decoder import decode_nz_vin
+from vio_mapper.vin_evidence import vin_context
 
 VIN_RULES = json.loads(vin_rules_path().read_text())
 
@@ -49,6 +50,59 @@ class NzVinTests(unittest.TestCase):
             self.assertEqual(result.fields["vehicle_identifier_section"], vin[9:])
             partial = decode_nz_vin(vin[:11], allow_prefix=True)
             self.assertIsNone(partial.fields["vehicle_identifier_section"])
+
+    def test_ford_ranger_uses_only_the_mirrored_official_approval(self):
+        for vin11 in ('MPBUMFF60KX', 'MPBUMFF60LX'):
+            with self.subTest(vin11=vin11):
+                result = decode_nz_vin(vin11, allow_prefix=True)
+                self.assertEqual(result.profile, 'ford_ranger_thailand')
+                self.assertEqual(result.status, 'partial_decode')
+                self.assertEqual(set(result.sources), {'ford_approval'})
+                resolved = {segment['key']: segment['meaning'] for segment in result.segments
+                            if segment['meaning'] is not None}
+                self.assertEqual(resolved, {
+                    'manufacturer_identifier': 'Ford Thailand',
+                    'constant': 'Fixed constant; not check digit',
+                })
+                year = next(segment for segment in result.segments
+                            if segment['key'] == 'production_or_model_year_code')
+                self.assertEqual(year['raw'], vin11[9])
+                self.assertIsNone(year['meaning'])
+
+    def test_colorado_supporting_evidence_does_not_overdecode_unknown_positions(self):
+        result = decode_nz_vin('MMU143DK0LH', allow_prefix=True)
+        self.assertEqual(result.profile, 'holden_colorado_observed')
+        self.assertEqual(result.status, 'partial_decode')
+        resolved = {segment['key']: segment['meaning'] for segment in result.segments
+                    if segment['meaning'] is not None}
+        self.assertEqual(resolved, {
+            'wmi': 'Holden Colorado RG approval family',
+            'model_variant_code': 'Colorado RG 2.8 turbo-diesel 4x4 variant family (U143DK)',
+        })
+        self.assertEqual(
+            [segment['raw'] for segment in result.segments if segment['meaning'] is None],
+            ['0', 'L', 'H'],
+        )
+        self.assertTrue(all(segment['status'] == 'inferred' for segment in result.segments
+                            if segment['meaning'] is not None))
+
+    def test_tucson_sources_ground_applicability_but_not_engine_character(self):
+        result = decode_nz_vin('TMAJ381ASLJ', allow_prefix=True)
+        self.assertEqual(result.profile, 'hyundai_tucson_tl')
+        self.assertIn('tucson_tle_cz', result.sources)
+        self.assertIn('tucson_hyundai_spec', result.sources)
+        engine = next(segment for segment in result.segments if segment['key'] == 'engine')
+        self.assertEqual(engine['raw'], 'A')
+        self.assertIsNone(engine['meaning'])
+        self.assertEqual(engine['status'], 'unresolved')
+
+    def test_new_supporting_profiles_do_not_become_actionable_kType_evidence(self):
+        colorado = vin_context('MMU143DK0LH', 'HOLDEN', 'COLORADO')
+        tucson = vin_context('TMAJ381ASLJ', 'HYUNDAI', 'TUCSON')
+        self.assertEqual(colorado['facts'], {})
+        self.assertEqual(tucson['facts'], {})
+        self.assertIn('No reviewed actionable adapter', colorado['note'])
+        self.assertIn('No reviewed actionable adapter', tucson['note'])
 
     def test_unknown_codes_and_leading_zeroes(self):
         result = decode_nz_vin("7ATZZZ99X22000001")

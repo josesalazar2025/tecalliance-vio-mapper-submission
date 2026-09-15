@@ -21,6 +21,7 @@ DATA_DIR = Path.cwd() / 'data'
 RULES_DIR = PACKAGE_ROOT / 'rules'
 REGISTRIES_DIR = RULES_DIR / 'registries'
 CATALOGUES_DIR = RULES_DIR / 'catalogues'
+MANUFACTURER_RULES_DIR = RULES_DIR / 'manufacturers'
 # NZ-specific and named so: both are replaced when the country changes, which is
 # why they live beside the registry vocabulary rather than in the generic rules.
 VIN_RULES_PATH = REGISTRIES_DIR / 'nz_vin_rules.json'  # the default registry's; see vin_rules_path()
@@ -67,7 +68,7 @@ ALL_CANDIDATES_CONTRADICTED = 'All candidates contradicted'
 # evidence the two catalogues share does not reach what acceptance requires.
 SOLE_CANDIDATE_INCOMPLETE = 'Single uncontradicted candidate, evidence incomplete'
 INSUFFICIENT = 'Insufficient information'
-PROPOSED = 'Proposed: identifier anchor, one specification conflict'
+PROPOSED = 'Proposed: likely candidate for review'
 ALL_STATUSES = (MATCHED, PROPOSED, AMBIGUOUS, CONFLICT, NO_CANDIDATE_IN_REFERENCE,
                 ALL_CANDIDATES_CONTRADICTED, SOLE_CANDIDATE_INCOMPLETE, INSUFFICIENT)
 
@@ -80,6 +81,7 @@ VIN_CONTRADICTION = 'VIN contradicts source fields'
 DUPLICATE_CONFLICT = 'duplicate ID values differ'
 IDENTIFIER_DISAGREEMENT = 'identifiers disagree with each other'
 IDENTIFIER_VS_SPECIFICATION = 'identifiers contradicted by specifications'
+MODEL_CODE_HINT_VS_SPECIFICATION = 'model-code hint contradicted by specifications'
 IDENTIFIER_UNSUPPORTED = 'identifier absent from candidate reference'
 NO_CANDIDATE = 'no candidate passes make/model gates'
 ALL_CONTRADICTED = 'every candidate contradicts specifications'
@@ -116,7 +118,8 @@ ACCEPTED_ON_DOMINANCE = 'criterion dominance'
 # real run, so the two can never drift apart again.
 STATUS_CATEGORIES = {
     MATCHED: frozenset({''}),
-    PROPOSED: frozenset({IDENTIFIER_VS_SPECIFICATION}),
+    PROPOSED: frozenset({IDENTIFIER_VS_SPECIFICATION,
+                         MODEL_CODE_HINT_VS_SPECIFICATION}),
     AMBIGUOUS: frozenset({TIED_CANDIDATES, SEPARABLE_ONLY_BY_SCOPED_RULE, NARROW_MARGIN,
                           NOT_SEPARATED}),
     CONFLICT: frozenset({SELF_CONTRADICTION, VIN_CONTRADICTION, DUPLICATE_CONFLICT,
@@ -161,7 +164,8 @@ VARIANT_CRITERIA = ('body', 'engine', 'drive')
 # candidates differ only by body, vetoing one is equivalent to selecting the other, so
 # a scoped reading would silently decide the row. It now names the likely candidate and
 # sends the row to review instead; see decision.scoped_structural_preference.
-VETO_FIELDS = (*COMPARED_FIELDS, 'vin_generation', 'vin_drive', 'vin_engine', 'chronology',
+VETO_FIELDS = (*COMPARED_FIELDS, 'vin_generation', 'vin_drive', 'vin_engine',
+               'chassis_model_comparison', 'chronology',
                'submodel_capacity', 'submodel_fuel_family', 'submodel_hybrid',
                'submodel_body')
 # Which roles a decision reads. The register column each one is recorded in is
@@ -180,7 +184,8 @@ MINIMUM_ANCHOR_FIELDS = 2
 
 # Reference columns copied onto each evidence row so a reviewer can see what the
 # candidate actually claimed, without opening the reference workbook.
-EXPORTED_REFERENCE_COLUMNS = ('Type_design', 'Type_designation', 'Model_design', 'Capacity_cubic',
+EXPORTED_REFERENCE_COLUMNS = ('Type_design', 'Type_designation', 'Model_design', 'Capacity_litre',
+                              'Capacity_cubic',
                               'Fuel_type', 'Maximum_output_KW', 'Drive_system', 'Kind_of_structure',
                               'Engine_code', 'Construction_from', 'Construction_to')
 
@@ -228,11 +233,9 @@ class Policy:
 
     # Power must agree exactly by default. A tolerance is available as an explicit
     # opt-in, expressed as a percentage of the reference figure, but no value for
-    # it can be derived: across 11,830 national rows matched on exact
-    # make/model/displacement/fuel, the power gap is either zero (97.5%) or at
-    # least 7.3%, so every band between those two does identical work. Any
-    # non-zero default would therefore be fitted to one model's records rather
-    # than to a general property of the data. Where a registry does carry a known
+    # it can be derived from the supplied official definitions. Any non-zero
+    # default could be fitted to one model's records rather than to a general
+    # property of the data. Where a registry does carry a known
     # systematic offset for a model, that belongs in a correction table reviewed
     # with the data owner, not in a global allowance.
     power_tolerance_pct: float = 0.0
@@ -261,7 +264,7 @@ class Policy:
     accept_score: float = 35.0
     min_margin: float = 12.0
     use_scoring: bool = True
-    year_mode: str = 'soft'
+    year_mode: str = 'gate'
     year_weight: float = 5.0
     use_vin_helper: bool = True
     # Candidate evidence is an audit artefact, not an input to any decision.

@@ -11,7 +11,7 @@
  * different number it is serving a different set of field names, and figures
  * this script asks for by name would silently render as em dashes. Say so
  * instead: in practice it means a server was left running across a code change. */
-const EXPECTED_PAYLOAD_VERSION = 6;
+const EXPECTED_PAYLOAD_VERSION = 7;
 
 const state = {
   defaults: null,
@@ -1036,7 +1036,7 @@ function drawerContent(row, candidates) {
   ]));
 
   blocks.push(el('h2', { style: 'margin:18px 0 4px', text: `Candidates compared (${candidates.length})` }));
-  blocks.push(el('p', { class: 'blurb', style: 'color:var(--circuit-400);font-size:12.5px;margin-bottom:10px', text: 'Each candidate shows the exact agreements, unknowns and contradictions used by the decision.' }));
+  blocks.push(el('p', { class: 'blurb', style: 'color:var(--circuit-400);font-size:12.5px;margin-bottom:10px', text: 'Most likely and shortlisted candidates appear first, followed by compatible candidates, then the remaining comparisons ordered by fewer contradictions and stronger criterion agreement. This is review priority, not a probability.' }));
   if (!candidates.length) {
     blocks.push(el('div', { class: 'card' }, [el('div', { class: 'empty', text: 'No candidate evidence was retained for this row under the run\'s retention setting.' })]));
   }
@@ -1064,8 +1064,13 @@ function candidateCard(candidate) {
   });
   return el('div', { class: `candidate${candidate.selected ? ' is-selected' : ''}` }, [
     el('header', {}, [
+      el('span', { class: 'muted mono', text: `#${candidate.review_rank}` }),
       el('span', { class: 'kt mono', text: kType(candidate.KType) }),
       el('span', { class: 'desig', text: referenceName(candidate) }),
+      candidate.review_priority === 'most likely' || candidate.review_priority === 'shortlist'
+        ? el('span', { class: 'pill pill-ambiguous', text: candidate.review_priority,
+          title: candidate.review_priority_basis })
+        : null,
       el('span', { class: `pill ${verdict[0]}`, text: verdict[1] }),
     ]),
     el('div', { class: 'body' }, [

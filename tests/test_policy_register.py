@@ -86,6 +86,14 @@ class PolicyRegister(unittest.TestCase):
             with self.subTest(module=module.__name__):
                 self.assertNotIn('policy_decisions', dir(module))
 
+    def test_every_advertised_cli_flag_exists(self):
+        from vio_mapper.cli import build_parser
+        option_strings = {option for action in build_parser()._actions
+                          for option in action.option_strings}
+        advertised = {entry['cli_flag'] for entry in self.register.values()
+                      if entry['cli_flag'] is not None}
+        self.assertLessEqual(advertised, option_strings)
+
 
 if __name__ == '__main__':
     unittest.main()
