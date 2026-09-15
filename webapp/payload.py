@@ -294,11 +294,16 @@ def summary(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict,
     }
 
 
-def _brief_candidates(evidence: pd.DataFrame, source_key: str, result_row) -> list[dict]:
+def _brief_candidates(evidence: pd.DataFrame, source_key: str, result_row,
+                      evidence_indices: dict | None = None) -> list[dict]:
     """The first few candidates for one row, in the same order as its drawer."""
     if evidence.empty or 'source_key' not in evidence.columns:
         return []
-    rows = evidence[evidence['source_key'] == source_key]
+    if evidence_indices is None:
+        rows = evidence[evidence['source_key'] == source_key]
+    else:
+        positions = evidence_indices.get(source_key)
+        rows = evidence.iloc[positions] if positions is not None else evidence.iloc[0:0]
     if rows.empty:
         return []
     rows = order_candidates_for_review(result_row, rows).head(BRIEF_CANDIDATE_LIMIT)
@@ -341,6 +346,15 @@ def review_brief(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
     """
     all_unresolved = results[results['Match_Status'] != MATCHED]
     unresolved = _distinct_vehicles(all_unresolved)
+    # Build both lookups once. Previously every unresolved vehicle rescanned all
+    # unresolved IDs, and every new review card rescanned all candidate evidence.
+    # That was effectively quadratic on demonstration-sized uploads.
+    source_keys_by_id: dict[str, list[str]] = {}
+    for normalized_id, source_key in zip(_normalized_ids(all_unresolved),
+                                         all_unresolved['source_key']):
+        source_keys_by_id.setdefault(normalized_id, []).append(str(source_key))
+    evidence_indices = (evidence.groupby('source_key', sort=False).indices
+                        if len(evidence) and 'source_key' in evidence.columns else {})
     grouped: dict[tuple, dict] = {}
     for _, row in unresolved.iterrows():
         kind = _brief_kind(row)
@@ -372,9 +386,7 @@ def review_brief(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
             'base_candidate_count': _clean(row.get('base_candidate_count')),
             'compatible_candidate_count': _clean(row.get('compatible_candidate_count')),
             'evidence_notes': _clean(row.get('evidence_notes')),
-            'source_keys': all_unresolved.loc[
-                _normalized_ids(all_unresolved).eq(normalized_text(row[column('id')])),
-                'source_key'].astype(str).tolist(),
+            'source_keys': source_keys_by_id.get(normalized_text(row[column('id')]), []),
         }
         # Everything that would make two cards read differently is in the key,
         # so folding them can never hide a distinction a reviewer would act on.
@@ -387,7 +399,8 @@ def review_brief(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
         if existing is None:
             entry['vehicle_count'] = 1
             entry['ids'] = [entry[column('id')]]
-            entry['candidates'] = _brief_candidates(evidence, entry['source_key'], row)
+            entry['candidates'] = _brief_candidates(
+                evidence, entry['source_key'], row, evidence_indices)
             grouped[key] = entry
         else:
             existing['vehicle_count'] += 1

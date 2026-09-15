@@ -92,7 +92,8 @@ async def read_row(run_id: str, source_key: str) -> dict:
 @app.get('/api/run/{run_id}/download')
 async def download(run_id: str) -> FileResponse:
     run = _require(run_id)
-    return FileResponse(run.workbook, filename=run.workbook.name,
+    workbook = await run_in_threadpool(runner.ensure_workbook, run)
+    return FileResponse(workbook, filename=workbook.name,
                         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
