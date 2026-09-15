@@ -110,26 +110,26 @@ def _mark_duplicate_ids(data: pd.DataFrame) -> pd.DataFrame:
     # whitespace/case differences do not manufacture a source conflict.
     comparable = data[identity_columns].copy()
     comparable[column('id')] = normalized_id
-    data['duplicate_of'] = ''
-    data['duplicate_id_conflict'] = False
-    data['provided_label_conflict'] = False
-    data['canonical_record'] = True
-    for _, group in data.groupby(normalized_id, sort=False):
-        labels = [numeric_value(value) for value in group['provided_kType']]
-        if len({value for value in labels if value is not None}) > 1:
-            data.loc[group.index, 'provided_label_conflict'] = True
-        if len(group) < 2:
-            continue
-        # Exact source equality after null normalization, not VIN equality.
-        if len(comparable.loc[group.index].fillna('').drop_duplicates()) > 1:
-            data.loc[group.index, 'duplicate_id_conflict'] = True
-            copies = group.index[1:]
-            data.loc[copies, 'canonical_record'] = False
-            data.loc[copies, 'duplicate_of'] = data.at[group.index[0], 'source_key']
-        else:
-            copies = group.index[1:]
-            data.loc[copies, 'canonical_record'] = False
-            data.loc[copies, 'duplicate_of'] = data.at[group.index[0], 'source_key']
+    # Grouped transforms do the same comparisons for all IDs in column-sized
+    # operations. The former Python loop built and indexed a tiny DataFrame once
+    # per distinct ID, which dominates ingestion when a register has hundreds of
+    # thousands of mostly unique vehicles.
+    variation = (comparable.fillna('')
+                 .groupby(normalized_id, sort=False)
+                 .transform('nunique', dropna=False)
+                 .gt(1).any(axis=1))
+    labels = data['provided_kType'].map(numeric_value)
+    provided_label_conflict = (labels.groupby(normalized_id, sort=False)
+                               .transform('nunique').gt(1))
+
+    copies = normalized_id.duplicated(keep='first')
+    first_source_key = data['source_key'].groupby(normalized_id, sort=False).transform('first')
+    # Preserve the published provenance-column order while assigning the
+    # vectorized results.
+    data['duplicate_of'] = first_source_key.where(copies, '')
+    data['duplicate_id_conflict'] = variation
+    data['provided_label_conflict'] = provided_label_conflict
+    data['canonical_record'] = ~copies
     return data
 
 

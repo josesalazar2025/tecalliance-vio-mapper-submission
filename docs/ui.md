@@ -20,4 +20,5 @@ use settings different from the submitted result.
 The UI is a local demonstration, not a deployed service. Runs are temporary, retained
 only in process memory and local temporary directories, and limited to 20,000 source
 rows. The proprietary reference workbook remains on the local machine under `data/`
-and is never served as a download.
+and is never served as a download. The result workbook is generated lazily on the first
+download request so XLSX serialization does not delay the initial analysis response.

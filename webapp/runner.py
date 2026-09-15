@@ -43,7 +43,7 @@ class RunError(Exception):
 
 @dataclass
 class Run:
-    """One finished run: the frames, the workbook, and the JSON already built."""
+    """One finished mapping run; its workbook is materialized on first download."""
 
     id: str
     source_name: str
@@ -52,10 +52,22 @@ class Run:
     evidence: pd.DataFrame
     workbook: Path
     report: str
+    policy: Policy
+    metadata: dict
     data: dict = field(default_factory=dict)
+    workbook_lock: Lock = field(default_factory=Lock, repr=False)
 
     def dispose(self) -> None:
         shutil.rmtree(self.directory, ignore_errors=True)
+
+
+def ensure_workbook(run: Run) -> Path:
+    """Build a run's workbook on first download, once even under concurrent requests."""
+    with run.workbook_lock:
+        if not run.workbook.exists():
+            write_workbook(build_sheets(run.results, run.evidence, run.policy, run.metadata),
+                           run.workbook)
+    return run.workbook
 
 
 class RunStore:
@@ -110,7 +122,6 @@ def execute(upload_name: str, upload_bytes: bytes, policy: Policy, store: RunSto
         metadata = run_metadata(results, policy, source_path, DEFAULT_REFERENCE_PATH)
         report = performance_report(results, metadata)
         workbook = directory / f'mapped_{source_path.stem}.xlsx'
-        write_workbook(build_sheets(results, evidence, policy, metadata), workbook)
     except RunError:
         shutil.rmtree(directory, ignore_errors=True)
         raise
@@ -125,7 +136,8 @@ def execute(upload_name: str, upload_bytes: bytes, policy: Policy, store: RunSto
     elapsed = time.perf_counter() - started
 
     run = Run(id=uuid.uuid4().hex[:12], source_name=Path(upload_name).name, directory=directory,
-              results=results, evidence=evidence, workbook=workbook, report=report)
+              results=results, evidence=evidence, workbook=workbook, report=report,
+              policy=policy, metadata=metadata)
     run.data = {
         'run_id': run.id,
         'payload_version': payload.PAYLOAD_VERSION,

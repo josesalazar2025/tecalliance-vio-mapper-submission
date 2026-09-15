@@ -189,7 +189,7 @@ def test_runner_builds_the_same_review_artifacts_without_proprietary_fixtures(
 
     run = runner.execute('source.csv', source_bytes, Policy(), runner.RunStore())
     try:
-        assert run.workbook.exists()
+        assert not run.workbook.exists()
         assert run.data['summary']['accepted'] == 1
         assert run.data['summary']['unresolved'] == 0
         assert run.data['results'][0]['mapped kType'] == 1
@@ -200,5 +200,7 @@ def test_runner_builds_the_same_review_artifacts_without_proprietary_fixtures(
         assert detail['candidates'][0]['KType'] == 1
         assert detail['candidates'][0]['review_rank'] == 1
         assert detail['candidates'][0]['review_priority'] == 'selected'
+        assert runner.ensure_workbook(run) == run.workbook
+        assert run.workbook.exists()
     finally:
         run.dispose()
