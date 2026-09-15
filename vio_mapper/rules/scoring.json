@@ -78,6 +78,21 @@
       "chronology": "chronology"
     }
   },
+  "review_conflict_classes": {
+    "description": "Review-only semantic classes for unresolved candidate ordering. Identity contradictions mean the documented generation or manufacturer model/type code points elsewhere; configuration contradictions distinguish a drivetrain or engine within that identity. Unlisted conflicts remain ordinary specification/configuration conflicts. This table changes neither compatibility nor mapping decisions.",
+    "values": {
+      "vin_generation": "identity",
+      "chassis_model_comparison": "identity",
+      "vin_drive": "configuration",
+      "vin_engine": "configuration"
+    },
+    "severity": {
+      "none": 0,
+      "near_power_only": 1,
+      "specification_or_configuration": 2,
+      "identity": 3
+    }
+  },
   "unproposable_conflicts": {
     "description": "Reserved for chronology conflicts in diagnostic policies. The maintained gate removes candidates starting after the registry year before evidence is built, and does not treat a year after production end as a contradiction.",
     "values": [

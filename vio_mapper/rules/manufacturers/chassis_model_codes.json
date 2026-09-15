@@ -36,7 +36,16 @@
       "scope": "Official manuals enumerate C 200 vehicle types 205.080, 205.280, 205.380 and 205.480; exact companion URLs and pages are recorded in the local evidence note.",
       "accessed": "2026-09-15",
       "local_copy": "docs/rule-sources/manufacturers/mercedes_c_class_205_type_codes.md",
-      "sha256": "896e2a04255f590fdf2a49ee3dac4f3a0f3d5f59d84c8b306f57c5b8229d7ca7"
+      "sha256": "afbda1e35bcc328f8e02cb581ea5eec3bdfedb02a0f486725318a3c6c0831624"
+    },
+    "mercedes_fin_grundbaumuster": {
+      "publisher": "Mercedes-Benz AG",
+      "title": "Baumuster finden",
+      "url": "https://www.originalteile.mercedes-benz.de/originalteile/baumuster-finden/",
+      "scope": "Mercedes identifies the six characters after a listed Mercedes WMI, including WDD, as the Grundbaumuster used for parts assignment and describing series, body form and engine.",
+      "accessed": "2026-09-15",
+      "local_copy": "docs/rule-sources/manufacturers/mercedes_c_class_205_type_codes.md",
+      "sha256": "afbda1e35bcc328f8e02cb581ea5eec3bdfedb02a0f486725318a3c6c0831624"
     }
   },
   "profiles": [
@@ -52,6 +61,18 @@
       "note": "Scoped to the HNT32-1 value present in the supplied CHASSIS7 field. Add a sourced profile rather than broadening this regex for another format."
     },
     {
+      "id": "mercedes_c_class_205_wdd_fin",
+      "make": "MERCEDES-BENZ",
+      "model": "C-CLASS",
+      "source_identifier_kind": "vin",
+      "pattern": "^WDD(?P<model_code>205(?:080|280|380|480))[A-HJ-NPR-Z0-9]{2}$",
+      "reference_column": "Type_design",
+      "known_model_codes": ["205080", "205280", "205380", "205480"],
+      "decision_role": "candidate_veto",
+      "source_ids": ["mercedes_fin_grundbaumuster", "mercedes_205_official_manuals"],
+      "note": "Scoped to WDD VIN11 values. Mercedes documents the six characters following WDD as the Grundbaumuster; the manuals enumerate the four supported C 200 type codes. Other WMIs and unknown types remain neutral."
+    },
+    {
       "id": "mercedes_c_class_205_mvma_hint",
       "make": "MERCEDES-BENZ",
       "model": "C-CLASS",
@@ -61,7 +82,7 @@
       "known_model_codes": ["205080", "205280", "205380", "205480"],
       "decision_role": "proposal_only",
       "source_ids": ["nzta_mvma_model_code", "mercedes_205_official_manuals"],
-      "note": "The leading MVMA value corresponds to an official Mercedes type number, but NZTA does not define the composite field format. It may propose a likely reference candidate only; it never vetoes or assigns. VIN11 is not decoded."
+      "note": "The leading MVMA value corresponds to an official Mercedes type number, but NZTA does not define the composite field format. It may propose a likely reference candidate only; it never vetoes or assigns. VIN11 decoding is handled separately by WMI-scoped profiles."
     }
   ]
 }

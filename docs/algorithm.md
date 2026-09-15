@@ -33,9 +33,12 @@ are officially documented. The Mercedes C-Class profile compares the leading val
 `MVMA_MODEL_CODE` with type numbers published in official Mercedes manuals, but NZTA
 does not document the composite field's internal format. It is therefore proposal-only:
 it cannot veto, satisfy evidence or populate `mapped kType`, and a hint contradicted by
-a core specification is not elevated over the other rejected candidates. Mercedes
-`VIN11` is not decoded. Adding another manufacturer requires a sourced data profile,
-not a new matching algorithm.
+a core specification is not elevated over the other rejected candidates. For `WDD`
+C-Class 205 VINs, Mercedes separately documents the next six characters as the
+`Grundbaumuster`; the four enumerated values are therefore compared authoritatively
+with `Type_design`. Other Mercedes WMIs and unlisted codes remain unknown. Agreeing VIN
+and MVMA decodes corroborate; differing decodes stop as an identifier conflict. Adding
+another manufacturer or WMI requires a sourced data profile, not a broader regex.
 
 Where a reviewed SUBMODEL profile contains marketing capacity, the matcher parses it
 as a decimal and compares it with RDM `Capacity_litre`. Decimal point and comma are
@@ -72,6 +75,18 @@ review and never makes an assignment.
 Accepted rows receive a kType and enter the partial VIO count once per distinct vehicle
 ID. Every other row receives a status, review reason, relevant fields and candidate
 evidence. Proposals and triage leads remain unassigned until a reviewer confirms them.
+
+After an unresolved outcome is final, RapidFuzz compares the normalized registry
+`SUBMODEL` text with each candidate's `Type_designation`, `Model_design` and
+`Type_design`. The recorded similarity is the mean of character ratio and token-sorted
+ratio; token-set containment is deliberately not used. Deterministic review tiers come
+first. Within a tier, a sole power conflict inside the existing review band leads other
+contradictions. Ordinary specification/configuration conflicts precede documented
+identity/generation contradictions; within the same class, positive identity agreement
+precedes independent conflict count and exact criterion agreements. Text similarity
+breaks remaining ties. Similarity never changes an evidence verdict,
+compatibility, score, proposal, status or `mapped kType`. Matched rows do not calculate
+it, and missing source or reference text yields no score.
 
 The implementation is separated into input adapters (`sources.py`), normalization,
 evidence construction, criterion selection, decision safeguards, pipeline orchestration

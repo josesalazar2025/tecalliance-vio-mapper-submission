@@ -70,7 +70,7 @@ def client():
 def test_frontend_is_served_and_matches_the_payload_version(client):
     assert client.get('/').status_code == 200
     defaults = client.get('/api/defaults').json()
-    assert defaults['algorithm_version'] == '1.0.0'
+    assert defaults['algorithm_version'] == '1.1.0'
     assert defaults['payload_version'] == payload.PAYLOAD_VERSION
     script = (Path(__file__).parents[1] / 'webapp/frontend/app.js').read_text()
     assert f'const EXPECTED_PAYLOAD_VERSION = {payload.PAYLOAD_VERSION};' in script
@@ -79,7 +79,7 @@ def test_frontend_is_served_and_matches_the_payload_version(client):
 def test_health_endpoint(client):
     assert client.get('/api/health').json() == {
         'status': 'ok',
-        'algorithm_version': '1.0.0',
+        'algorithm_version': '1.1.0',
     }
 
 
@@ -141,6 +141,43 @@ def test_unflagged_candidates_rank_by_contradictions_then_agreement():
     ordered = payload.order_candidates_for_review(row, candidates)
 
     assert ordered['KType'].tolist() == [2, 1, 3]
+
+
+def test_text_similarity_breaks_review_ties_but_never_beats_compatibility():
+    row = pd.Series({'remaining_kTypes': '1; 2'})
+    candidates = pd.DataFrame([
+        {'KType': 1, 'selected': False, 'compatible': True,
+         'disagreements': '', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 2,
+         'text_similarity_score': 35},
+        {'KType': 2, 'selected': False, 'compatible': True,
+         'disagreements': '', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 2,
+         'text_similarity_score': 90},
+        {'KType': 3, 'selected': False, 'compatible': False,
+         'disagreements': 'power', 'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive', 'power_difference_kw': 1,
+         'text_similarity_score': 100},
+    ])
+
+    ordered = payload.order_candidates_for_review(row, candidates)
+
+    assert ordered['KType'].tolist() == [2, 1, 3]
+    assert ordered['review_priority'].tolist() == ['compatible', 'compatible', 'other']
+
+
+def test_payload_preserves_review_order_calculated_by_core():
+    candidates = pd.DataFrame([
+        {'KType': 1, 'review_rank': 2, 'review_priority': 'shortlist',
+         'review_priority_basis': 'core order'},
+        {'KType': 2, 'review_rank': 1, 'review_priority': 'shortlist',
+         'review_priority_basis': 'core order'},
+    ])
+
+    ordered = payload.order_candidates_for_review(pd.Series({}), candidates)
+
+    assert ordered['KType'].tolist() == [2, 1]
+    assert ordered['review_rank'].tolist() == [1, 2]
 
 
 def test_runner_builds_the_same_review_artifacts_without_proprietary_fixtures(

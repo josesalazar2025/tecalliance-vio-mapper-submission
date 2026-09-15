@@ -268,7 +268,12 @@ def _decision_policy_section(metadata: dict) -> list[str]:
               'Soft mode retains every make/model candidate for sensitivity analysis.', '',
               f'Sourced VIN helper: {"enabled" if policy.use_vin_helper and policy.use_identifiers else "disabled"}. '
               'Reviewed VIN facts can corroborate specifications or contradict candidates. '
-              'Reviewed VIN evidence may support or block an assignment; see docs/algorithm.md.', '']
+              'Reviewed VIN evidence may support or block an assignment; see docs/algorithm.md.', '',
+              'Unresolved candidate review order first promotes sole near-power conflicts, '
+              'prefers positive identity/generation agreement within a conflict class, and '
+              'places identity contradictions after configuration/specification conflicts; '
+              'RapidFuzz text similarity is a later tie-breaker. It never '
+              'changes compatibility, status, proposals or assignments.', '']
     return lines
 
 
@@ -286,6 +291,8 @@ def _evaluation_limits_section(results: pd.DataFrame, unique: pd.DataFrame) -> l
             '- Dataset-derived structural parsing and the power near-match policy are review context, not ground truth. '
             'Body agreement is limited to official names shared by both publishers; unreviewed pairs remain unknown. '
             'VIN facts carry source provenance, while their reference comparisons still need independent validation.',
+            '- RapidFuzz similarity orders unresolved candidates for review only. It is uncalibrated, '
+            'is not a probability and contributes no matching evidence.',
             # Whatever this register says about itself; another register's file
             # states its own, and one that states none prints none.
             *(f'- {note}' for note in registry_report_notes()),
@@ -307,6 +314,9 @@ def scoring_policy_frame(policy) -> pd.DataFrame:
     rows += [{'item': f'{group} cap', 'points_or_setting': cap,
               'meaning': 'Maximum contribution from this group.'}
              for group, cap in rules['group_caps'].items()]
+    rows += [{'item': f'{field} review conflict class', 'points_or_setting': conflict_class,
+              'meaning': 'Unresolved candidate ordering only; never changes compatibility or assignment.'}
+             for field, conflict_class in rules['review_conflict_classes'].items()]
     rows += [
         {'item': 'acceptance threshold', 'points_or_setting': policy.accept_score,
          'meaning': 'Score route only; the sole-candidate complete-version route bypasses this threshold.'},

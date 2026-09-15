@@ -168,6 +168,14 @@ class RuleTableTests(unittest.TestCase):
         # An unlisted field reports under its own name rather than vanishing.
         self.assertEqual(core_conflict('something_new'), 'something_new')
 
+    def test_review_conflict_classes_distinguish_identity_from_configuration(self):
+        classes = score_rules()['review_conflict_classes']
+        self.assertEqual({field for field, value in classes.items() if value == 'identity'},
+                         {'vin_generation', 'chassis_model_comparison'})
+        self.assertEqual({field for field, value in classes.items()
+                          if value == 'configuration'}, {'vin_drive', 'vin_engine'})
+        self.assertFalse(any(field.isdigit() for field in classes))
+
 
 if __name__ == '__main__':
     unittest.main()

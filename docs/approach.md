@@ -10,18 +10,21 @@ Structured deterministic rules were chosen because both inputs are structured an
 provided labels are far too sparse to train or calibrate a statistical model. The
 decision and its evidence can therefore be reproduced and inspected row by row.
 
-On the supplied extract, the output contains 112 worksheet rows representing 111
-distinct vehicle IDs. It accepts 42 distinct vehicles (37.8%) and leaves 69 unresolved.
-Nine Nissan X-Trail hybrids are assigned to kType 124055 through the officially sourced
-`HNT32` manufacturer-code rule; the alternative `HT32` candidate is vetoed. Missing or
-unsupported chassis codes remain neutral. For Mercedes-Benz C-Class, the leading value
-of `MVMA_MODEL_CODE` produces a review-only proposal: 18 C 200 saloon rows propose kType
-137963 while remaining ambiguous. Seven internally inconsistent 1.5-litre rows instead
-produce a Capacity_litre review shortlist; their conflicting 205.380 model-code hint does
-not name an incompatible proposal. No Mercedes row is assigned by this rule, and no
-Mercedes VIN character is decoded.
-The two distinct labeled examples agree with the assigned kType, but two examples do
-not establish general accuracy.
+The current supplied-extract run contains 112 worksheet rows representing 111 distinct
+vehicle IDs. It accepts 60 distinct vehicles (54.1%) and leaves 51 unresolved. There
+are 61 matched worksheet rows because one exact duplicate is retained in `Results` for
+audit but counted only once in VIO. The accepted population comprises 20 Hyundai Kona
+vehicles mapped to kType 129021, 13 Hyundai Tucson vehicles mapped to 115220, 18
+Mercedes-Benz C-Class vehicles mapped to 137963, and nine Nissan X-Trail hybrids mapped
+to 124055.
+
+The X-Trail hybrid assignment uses the sourced `HNT32` manufacturer-code rule to veto
+the `HT32` alternative. The Mercedes assignment can authoritatively compare the
+documented six-character `Grundbaumuster` in supported `WDD` C-Class 205 VINs with
+`Type_design`; other Mercedes WMIs remain neutral, and the composite `MVMA_MODEL_CODE`
+remains proposal-only. The two distinct labeled examples agree with the assigned kType,
+but two examples do not establish general accuracy. The 54.1% figure is acceptance
+coverage, not measured precision.
 
 The recommended next step is an expert-reviewed pilot on a fresh batch. Accepted and
 unresolved groups should be adjudicated by a mapping expert before any result affects
