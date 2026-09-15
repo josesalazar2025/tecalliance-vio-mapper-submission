@@ -4,7 +4,7 @@ A deterministic Python prototype that maps New Zealand vehicle-register rows to
 TecAlliance kTypes. It assigns a kType only when the available evidence separates one
 compatible candidate; ambiguous or contradictory rows remain unresolved for review.
 
-Algorithm version: **1.0.0**.
+Algorithm version: **1.1.0**.
 
 ## Reviewer guide
 

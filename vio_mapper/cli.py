@@ -10,6 +10,7 @@ from pathlib import Path
 
 import openpyxl
 import pandas as pd
+import rapidfuzz
 
 from .config import (ALGORITHM_VERSION, DEFAULT_REFERENCE_PATH, DEFAULT_REGISTRY,
                      DEFAULT_SOURCE_PATH, EVIDENCE_RETENTION, EXCEL_MAX_ROWS, PROJECT_ROOT,
@@ -26,7 +27,7 @@ DEFAULT_REPORT = Path.cwd() / 'mapping_performance.md'
 # Files whose content defines a run, and which must never be overwritten by it.
 PROVENANCE_FILES = ('config.py', 'normalization.py', 'sources.py', 'submodel.py',
                     'vin_decoder.py', 'vin_evidence.py', 'chassis_decoder.py',
-                    'evidence.py', 'scoring.py',
+                    'evidence.py', 'scoring.py', 'review_ranking.py',
                     'dominance.py', 'decision.py', 'pipeline.py', 'reporting.py', 'cli.py')
 
 
@@ -99,7 +100,7 @@ def run_metadata(results: pd.DataFrame, policy: Policy, source: Path, reference:
         'registry': active_registry(),
         'run_utc': datetime.now(timezone.utc).isoformat(),
         'python': platform.python_version(), 'pandas': pd.__version__,
-        'openpyxl': openpyxl.__version__,
+        'openpyxl': openpyxl.__version__, 'rapidfuzz': rapidfuzz.__version__,
         'policy': json.dumps(policy.__dict__, sort_keys=True),
         'vio_scope': 'Accepted distinct IDs only; not the complete source population',
         'source_distinct_ids': int(results.ID.map(normalized_text).nunique()),

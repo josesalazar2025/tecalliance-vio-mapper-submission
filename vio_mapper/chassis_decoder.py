@@ -56,13 +56,28 @@ def decode_chassis_model(row) -> dict:
             # It must not be turned into negative evidence by the decoder.
             if code in profile['known_model_codes']:
                 matches.append((field, raw, profile, code))
-    if len(matches) != 1:
-        return {'status': 'unavailable' if not matches else 'ambiguous', 'model_code': None,
+    if not matches:
+        return {'status': 'unavailable', 'model_code': None,
                 'source_field': '', 'raw': '', 'profile': None, 'sources': {},
                 'reference_column': '', 'known_model_codes': frozenset()}
-    field, raw, profile, code = matches[0]
+    codes = {code for _, _, _, code in matches}
+    if len(codes) != 1:
+        return {'status': 'conflicting', 'model_code': None,
+                'source_field': '; '.join(field for field, _, _, _ in matches),
+                'raw': '; '.join(f'{field}={raw}' for field, raw, _, _ in matches),
+                'profile': None,
+                'sources': {source_id: chassis_rules()['sources'][source_id]
+                            for _, _, profile, _ in matches
+                            for source_id in profile['source_ids']},
+                'reference_column': '', 'known_model_codes': frozenset()}
+    # Independent identifiers that decode to the same value corroborate rather
+    # than make the result ambiguous. Prefer an actionable profile over a
+    # proposal-only one, while retaining the provenance of every agreeing read.
+    field, raw, profile, code = min(
+        matches, key=lambda item: item[2].get('decision_role', 'candidate_veto') == 'proposal_only')
     sources = {source_id: chassis_rules()['sources'][source_id]
-               for source_id in profile['source_ids']}
+               for _, _, matched_profile, _ in matches
+               for source_id in matched_profile['source_ids']}
     return {'status': 'documented', 'model_code': code, 'source_field': field,
             'raw': raw, 'profile': profile['id'], 'sources': sources,
             'reference_column': profile['reference_column'],

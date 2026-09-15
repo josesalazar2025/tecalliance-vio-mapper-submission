@@ -7,11 +7,12 @@ import pandas as pd
 
 from vio_mapper.cli import main
 from vio_mapper.chassis_decoder import decode_chassis_model
-from vio_mapper.config import (ALL_CANDIDATES_CONTRADICTED, AMBIGUOUS, MATCHED,
+from vio_mapper.config import (ALL_CANDIDATES_CONTRADICTED, AMBIGUOUS, CONFLICT, MATCHED,
                                NO_CANDIDATE_IN_REFERENCE, NOT_SEPARATED, PROJECT_ROOT, RULES_DIR, Policy,
                                available_registries)
 from vio_mapper.pipeline import map_vehicles, map_vehicles_streaming
 from vio_mapper.reporting import review_queue
+from vio_mapper.review_ranking import order_review_candidates
 from vio_mapper.sources import load_source, prepare_reference, prepare_source
 
 
@@ -155,6 +156,76 @@ def test_indistinguishable_candidates_are_left_for_review():
     assert pd.isna(results.loc[0, 'mapped kType'])
 
 
+def test_unresolved_candidates_use_text_similarity_for_review_order_only():
+    vehicle = source(SUBMODEL='KONA PREMIUM SPORT')
+    candidates = reference(
+        {**REFERENCE_ROW, 'Type_designation': 'BASE'},
+        {**REFERENCE_ROW, 'KType': 2, 'Type_designation': 'PREMIUM SPORT'},
+    )
+
+    results, evidence = map_vehicles(vehicle, candidates)
+
+    assert results.loc[0, 'Match_Status'] == AMBIGUOUS
+    assert pd.isna(results.loc[0, 'mapped kType'])
+    assert evidence['KType'].tolist() == [2, 1]
+    assert evidence['review_rank'].tolist() == [1, 2]
+    scores = evidence.set_index('KType')['text_similarity_score']
+    assert scores[2] > scores[1]
+    assert set(evidence['text_similarity_method']) == {
+        'mean(ratio, token_sort_ratio); RapidFuzz'}
+
+
+def test_matched_rows_do_not_calculate_review_similarity():
+    results, evidence = map_vehicles(source(SUBMODEL='PREMIUM SPORT'), reference())
+
+    assert results.loc[0, 'Match_Status'] == MATCHED
+    assert evidence['text_similarity_score'].isna().all()
+    assert set(evidence['text_similarity_method']) == {''}
+
+
+def test_near_power_candidate_outranks_exact_power_with_vin_generation_conflict():
+    details = [
+        {'KType': 124043, 'selected': False, 'compatible': False,
+         'disagreements': 'vin_generation',
+         'version_criteria_agreed': 'capacity; fuel; power',
+         'variant_criteria_agreed': 'drive; engine',
+         'power_difference_kw': 0, 'power_within_triage_band': False,
+         'vin_generation': 'disagree',
+         'text_similarity_score': 9.1},
+        {'KType': 107384, 'selected': False, 'compatible': False,
+         'disagreements': 'power; vin_drive',
+         'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'engine',
+         'power_difference_kw': -1, 'power_within_triage_band': True,
+         'vin_generation': 'agree', 'vin_drive': 'disagree',
+         'text_similarity_score': 31.6},
+        {'KType': 17194, 'selected': False, 'compatible': False,
+         'disagreements': 'power',
+         'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive; engine',
+         'power_difference_kw': -4, 'power_within_triage_band': False,
+         'vin_generation': 'unknown',
+         'text_similarity_score': 18.0},
+        {'KType': 107383, 'selected': False, 'compatible': False,
+         'disagreements': 'power',
+         'version_criteria_agreed': 'capacity; fuel',
+         'variant_criteria_agreed': 'drive; engine',
+         'power_difference_kw': -1, 'power_within_triage_band': True,
+         'vin_generation': 'agree',
+         'text_similarity_score': 32.4},
+    ]
+
+    order_review_candidates(details, selected=None, proposed=None, lead=None,
+                            shortlist={17194, 124043, 107383, 107384}, remaining=set(),
+                            unresolved=True)
+
+    assert [candidate['KType'] for candidate in details] == [107383, 107384, 17194, 124043]
+    assert details[0]['review_near_power_only'] is True
+    assert details[1]['review_configuration_conflicts'] == 'vin_drive'
+    assert details[1]['review_identity_agreements'] == 'vin_generation'
+    assert details[3]['review_identity_conflicts'] == 'vin_generation'
+
+
 def test_known_contradictions_block_every_candidate():
     contradicted = reference(
         {**REFERENCE_ROW, 'Maximum_output_KW': 120},
@@ -256,7 +327,9 @@ def test_missing_or_unrecognized_chassis_prefix_is_neutral():
 
 
 def test_mercedes_mvma_type_names_likely_candidate_without_assigning():
-    vehicle = prepare_source(pd.DataFrame([MERCEDES_SOURCE]))
+    vehicle = prepare_source(pd.DataFrame([
+        {**MERCEDES_SOURCE, 'VIN11': 'W1K2050802R'},
+    ]))
     results, evidence = map_vehicles(vehicle, reference(*MERCEDES_REFERENCES))
     compared = evidence.set_index('KType')['chassis_model_hint_comparison']
     assert compared.to_dict() == {900001: 'agree', 900002: 'disagree',
@@ -273,6 +346,33 @@ def test_mercedes_mvma_type_names_likely_candidate_without_assigning():
     assert 'most likely candidate for review' in results.loc[0, 'Match_Reason']
 
 
+def test_mercedes_wdd_fin_type_assigns_matching_type_design():
+    vehicle = prepare_source(pd.DataFrame([MERCEDES_SOURCE]))
+    results, evidence = map_vehicles(vehicle, reference(*MERCEDES_REFERENCES))
+    compared = evidence.set_index('KType')['chassis_model_comparison']
+    assert compared.to_dict() == {900001: 'agree', 900002: 'disagree',
+                                  900003: 'disagree', 900004: 'disagree'}
+    assert results.loc[0, 'Match_Status'] == MATCHED
+    assert results.loc[0, 'mapped kType'] == 900001
+    assert pd.isna(results.loc[0, 'proposed_kType'])
+    assert results.loc[0, 'chassis_decoder_source_field'] == 'VIN11'
+    assert results.loc[0, 'chassis_decoder_model_code'] == '205080'
+    assert results.loc[0, 'chassis_decoder_decision_role'] == 'candidate_veto'
+    assert evidence.set_index('KType').loc[900001, 'VIN11_tokens'] == '205080'
+
+
+def test_conflicting_mercedes_wdd_fin_and_mvma_code_stops_assignment():
+    vehicle = prepare_source(pd.DataFrame([
+        {**MERCEDES_SOURCE, 'MVMA_MODEL_CODE': '20538022-NZ5'},
+    ]))
+    results, evidence = map_vehicles(vehicle, reference(*MERCEDES_REFERENCES))
+    assert results.loc[0, 'Match_Status'] == CONFLICT
+    assert pd.isna(results.loc[0, 'mapped kType'])
+    assert results.loc[0, 'chassis_decoder_status'] == 'conflicting'
+    assert set(evidence['chassis_model_comparison']) == {'unknown'}
+    assert 'identifiers disagree' in results.loc[0, 'Match_Reason'].lower()
+
+
 def test_mercedes_vin_without_mvma_remains_undecoded_and_neutral():
     vehicle = prepare_source(pd.DataFrame([
         {**MERCEDES_SOURCE, 'VIN11': 'W1K2050802R', 'MVMA_MODEL_CODE': None},
@@ -287,7 +387,7 @@ def test_mercedes_vin_without_mvma_remains_undecoded_and_neutral():
 
 def test_mercedes_mvma_hint_never_excuses_capacity_conflict():
     vehicle = prepare_source(pd.DataFrame([
-        {**MERCEDES_SOURCE, 'VIN11': 'WDD2053802F',
+        {**MERCEDES_SOURCE, 'VIN11': 'W1K2053802F',
          'MVMA_MODEL_CODE': '20538022-NZ5', 'CC_RATING': 1491},
     ]))
     results, evidence = map_vehicles(vehicle, reference(*MERCEDES_REFERENCES))
@@ -302,7 +402,7 @@ def test_mercedes_mvma_hint_never_excuses_capacity_conflict():
 def test_submodel_litres_create_review_shortlist_after_candidate_gates():
     vehicle = prepare_source(pd.DataFrame([
         {**MERCEDES_SOURCE, 'SUBMODEL': 'C 200 1.5P/9AT', 'CC_RATING': 1491,
-         'MVMA_MODEL_CODE': '20538022-NZ5'},
+         'VIN11': 'W1K2050802R', 'MVMA_MODEL_CODE': '20538022-NZ5'},
     ]))
     candidates = reference(
         {**MERCEDES_REFERENCES[0], 'KType': 11, 'Capacity_litre': '1,5',
@@ -459,7 +559,8 @@ def test_cli_writes_auditable_workbook_and_report(tmp_path: Path):
     assert {'Results', 'Candidate_Evidence', 'Review_Queue', 'VIO', 'Metadata'} <= set(
         workbook.sheet_names)
     metadata = pd.read_excel(output_path, sheet_name='Metadata').set_index('property')['value']
-    assert metadata['algorithm_version'] == '1.0.0'
+    assert metadata['algorithm_version'] == '1.1.0'
+    assert str(metadata['rapidfuzz']).startswith('3.')
     assert 'acceptance coverage' in report_path.read_text()
 
 

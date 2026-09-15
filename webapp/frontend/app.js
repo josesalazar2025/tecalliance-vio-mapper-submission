@@ -11,7 +11,7 @@
  * different number it is serving a different set of field names, and figures
  * this script asks for by name would silently render as em dashes. Say so
  * instead: in practice it means a server was left running across a code change. */
-const EXPECTED_PAYLOAD_VERSION = 7;
+const EXPECTED_PAYLOAD_VERSION = 8;
 
 const state = {
   defaults: null,
@@ -863,6 +863,9 @@ function renderRules(panel) {
         el('span', { class: 'kv' }, [el('b', { text: field })]))),
       el('h3', { style: 'margin-top:16px', text: 'Collapsed onto' }),
       kvCloud(Object.fromEntries(r.core_conflicts.map((row) => [row.evidence_key, row.counts_as]))),
+      el('h3', { style: 'margin-top:16px', text: 'Unresolved review conflict classes' }),
+      el('p', { class: 'blurb', text: 'These semantic classes order candidates for review only. They never alter compatibility or a mapping decision.' }),
+      kvCloud(Object.fromEntries(r.review_conflict_classes.map((row) => [row.evidence_key, row.review_class]))),
       el('p', { class: 'blurb', style: 'margin-top:12px' }, [
         'Never proposable: ',
         el('b', { text: r.unproposable_conflicts.join(', ') || DASH }),
@@ -1036,7 +1039,7 @@ function drawerContent(row, candidates) {
   ]));
 
   blocks.push(el('h2', { style: 'margin:18px 0 4px', text: `Candidates compared (${candidates.length})` }));
-  blocks.push(el('p', { class: 'blurb', style: 'color:var(--circuit-400);font-size:12.5px;margin-bottom:10px', text: 'Most likely and shortlisted candidates appear first, followed by compatible candidates, then the remaining comparisons ordered by fewer contradictions and stronger criterion agreement. This is review priority, not a probability.' }));
+  blocks.push(el('p', { class: 'blurb', style: 'color:var(--circuit-400);font-size:12.5px;margin-bottom:10px', text: 'Most likely and shortlisted candidates appear first, followed by compatible candidates. Within a tier, sole near-power conflicts lead; candidates agreeing with documented identity/generation precede otherwise equal candidates, while identity contradictions follow configuration or specification conflicts. Text similarity breaks later ties. This is review priority, not evidence or probability.' }));
   if (!candidates.length) {
     blocks.push(el('div', { class: 'card' }, [el('div', { class: 'empty', text: 'No candidate evidence was retained for this row under the run\'s retention setting.' })]));
   }
@@ -1093,6 +1096,21 @@ function candidateCard(candidate) {
           : `${num(candidate.power_difference_kw, 1)} kW${candidate.power_within_triage_band ? ' (within triage band)' : ''}`],
         ['Year', show(candidate.year_relationship)],
         ['Criterion set', show(candidate.criterion_vector)],
+        ['Review conflict priority', candidate.review_near_power_only
+          ? 'sole near-power conflict'
+          : candidate.review_identity_conflicts
+            ? `identity conflict: ${candidate.review_identity_conflicts}`
+            : candidate.review_configuration_conflicts
+              ? `configuration conflict: ${candidate.review_configuration_conflicts}`
+              : candidate.review_identity_agreements
+                ? `identity agrees: ${candidate.review_identity_agreements}`
+                : null],
+        ['Text similarity', candidate.text_similarity_score === null || candidate.text_similarity_score === undefined
+          ? null
+          : `${num(candidate.text_similarity_score, 1)} · rank ${num(candidate.text_similarity_rank)} · ${show(candidate.text_similarity_method)}`],
+        ['Similarity input', candidate.text_similarity_score === null || candidate.text_similarity_score === undefined
+          ? null
+          : `${show(candidate.text_similarity_source)} ↔ ${show(candidate.text_similarity_reference)}`],
       ])]),
     ]),
   ]);

@@ -22,7 +22,7 @@ from vio_mapper.normalization import normalized_text
 # meaning. The page checks it on load: a server left running across such a change
 # serves the old field names to a newly loaded script, and every figure that moved
 # quietly renders as an em dash. A mismatch must say so instead.
-PAYLOAD_VERSION = 7
+PAYLOAD_VERSION = 8
 
 # Columns the results table shows before a reviewer opens a row. The drawer
 # fetches the whole row on demand: sending all 90 columns for every row would
@@ -40,7 +40,13 @@ def table_columns() -> tuple:
 # What a reviewer needs to see about a rejected candidate to judge it without
 # opening the workbook: what it claims, what agrees, and what it contradicts.
 CANDIDATE_COLUMNS = ('KType', 'review_rank', 'review_priority', 'review_priority_basis',
+                     'review_conflict_severity', 'review_independent_conflict_count',
+                     'review_near_power_only', 'review_identity_conflicts',
+                     'review_configuration_conflicts', 'review_identity_agreements',
                      'compatible', 'selected',
+                     'text_similarity_score', 'text_similarity_rank',
+                     'text_similarity_method', 'text_similarity_source',
+                     'text_similarity_reference',
                      'disagreements', 'power_difference_kw', 'power_difference_pct',
                      'power_within_triage_band', 'year_relationship', 'criterion_vector',
                      'reference_Type_designation', 'reference_Model_design', 'reference_Type_design',
@@ -163,6 +169,11 @@ def order_candidates_for_review(row, candidates: pd.DataFrame) -> pd.DataFrame:
     if candidates.empty:
         return candidates.copy()
     ranked = candidates.copy()
+    recorded_rank = pd.to_numeric(
+        ranked.get('review_rank', pd.Series(index=ranked.index, dtype=float)), errors='coerce')
+    if recorded_rank.notna().all() and {'review_priority', 'review_priority_basis'} <= set(ranked):
+        return ranked.assign(review_rank=recorded_rank.astype(int)).sort_values(
+            ['review_rank', 'KType'], kind='stable')
     selected = _kType(row.get('mapped kType'))
     proposed = _kType(row.get('proposed_kType'))
     lead = _kType(row.get('triage_lead_kType'))
@@ -202,12 +213,16 @@ def order_candidates_for_review(row, candidates: pd.DataFrame) -> pd.DataFrame:
     ranked['_power_gap'] = pd.to_numeric(
         ranked.get('power_difference_kw', pd.Series(index=ranked.index, dtype=float)),
         errors='coerce').abs().fillna(float('inf'))
+    ranked['_text_similarity'] = pd.to_numeric(
+        ranked.get('text_similarity_score', pd.Series(index=ranked.index, dtype=float)),
+        errors='coerce').fillna(-1)
     ranked = ranked.sort_values(
-        ['_review_tier', '_contradiction_count', '_agreement_count', '_power_gap', 'KType'],
-        ascending=[True, True, False, True, True], kind='stable')
+        ['_review_tier', '_contradiction_count', '_agreement_count',
+         '_text_similarity', '_power_gap', 'KType'],
+        ascending=[True, True, False, False, True, True], kind='stable')
     ranked['review_rank'] = range(1, len(ranked) + 1)
     return ranked.drop(columns=['_review_tier', '_contradiction_count',
-                                '_agreement_count', '_power_gap'])
+                                '_agreement_count', '_text_similarity', '_power_gap'])
 
 
 def _counts(series: pd.Series, name: str) -> list[dict]:
@@ -481,6 +496,9 @@ def rules(policy: Policy) -> dict:
         'selection_description': selection_description(policy),
         'core_conflicts': [{'evidence_key': key, 'counts_as': value}
                            for key, value in shared['core_conflicts'].items()],
+        'review_conflict_classes': [{'evidence_key': key, 'review_class': value}
+                                    for key, value in shared['review_conflict_classes'].items()],
+        'review_conflict_severity': shared['review_conflict_severity'],
         'unproposable_conflicts': sorted(shared['unproposable_conflicts']),
         'statuses': [{'status': status, 'meaning': STATUS_GLOSSARY.get(status, '')}
                      for status in ALL_STATUSES],

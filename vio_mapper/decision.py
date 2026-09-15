@@ -15,7 +15,7 @@ from dataclasses import dataclass, field as dataclass_field
 
 import pandas as pd
 
-from .chassis_decoder import chassis_audit_columns
+from .chassis_decoder import chassis_audit_columns, decode_chassis_model
 from .config import (ACCEPTED_ON_DOMINANCE, ACCEPTED_ON_SCORE, ACCEPTED_ON_UNIQUENESS,
                      ALL_CANDIDATES_CONTRADICTED, ALL_CONTRADICTED, AMBIGUOUS, BELOW_THRESHOLD,
                      COMPARED_FIELDS, CONFLICT, CRITERION_SET, DISPLACEMENTLESS_FUELS,
@@ -35,6 +35,7 @@ from .dominance import criterion_columns, criterion_vector, sufficient
 from .evidence import active_structural_codes, candidate_evidence, identifier_context
 from .normalization import (compact_code, model_year, normalized_text, numeric_value,
                             submodel_drive_category)
+from .review_ranking import add_review_similarity, order_review_candidates
 from .scoring import SCORE_COLUMNS, rank_candidates, score_candidate
 from .submodel import audit_columns as submodel_audit_columns, source_context as submodel_context
 from .vin_evidence import audit_columns as vin_audit_columns, drive_comparison, vin_context
@@ -312,7 +313,10 @@ def anchor_state(row, details, policy) -> AnchorState:
     populated = [ktypes for ktypes in per_field.values() if ktypes]
     anchored = set.intersection(*populated) if populated else set()
     codes = active_structural_codes(row, policy)
-    conflicting = len(populated) > 1 and not anchored
+    conflicting = (
+        policy.use_identifiers and decode_chassis_model(row)['status'] == 'conflicting'
+        or (len(populated) > 1 and not anchored)
+    )
     # Recognized VIN/MVMA codes must agree even if one is absent from reference.
     manufacturer_codes = [values for name, values in codes.items()
                           if values and name in identifiers_where('manufacturer_assigned')]
@@ -927,6 +931,16 @@ def decide(row, candidates, policy, *, include_score_diagnostics: bool = True) -
 
     proposal = outcome.proposal
     lead = outcome.lead
+    add_review_similarity(row, details, unresolved=outcome.status != MATCHED)
+    order_review_candidates(
+        details,
+        selected=outcome.selected,
+        proposed=proposal['kType'] if proposal else None,
+        lead=lead['kType'] if lead else None,
+        shortlist=set(lead['alternatives']) if lead else set(),
+        remaining=set(candidate_ids),
+        unresolved=outcome.status != MATCHED,
+    )
     result = {'mapped kType': outcome.selected, 'Match_Status': outcome.status,
               'Match_Reason': outcome.reason, 'Review_Category': outcome.category,
               'acceptance_route': outcome.route,
@@ -976,7 +990,7 @@ def decide(row, candidates, policy, *, include_score_diagnostics: bool = True) -
 
 def _compare_all_candidates(row, candidates, policy, decoded_vin, parsed_submodel,
                             include_score_diagnostics: bool) -> list[dict]:
-    """Decision evidence and reference context for every candidate, in kType order."""
+    """Decision evidence and reference context for every candidate."""
     details = []
     for _, candidate in candidates.iterrows():
         evidence = candidate_evidence(row, candidate, policy, decoded_vin, parsed_submodel)

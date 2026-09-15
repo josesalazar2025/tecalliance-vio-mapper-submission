@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-ALGORITHM_VERSION = '1.0.0'
+ALGORITHM_VERSION = '1.1.0'
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent
@@ -701,6 +701,8 @@ def score_rules() -> dict:
         'criterion_tier': {field: entry['tier']
                            for field, entry in raw['criterion_tier']['values'].items()},
         'core_conflicts': raw['core_conflicts']['values'],
+        'review_conflict_classes': raw['review_conflict_classes']['values'],
+        'review_conflict_severity': raw['review_conflict_classes']['severity'],
         'unproposable_conflicts': set(raw['unproposable_conflicts']['values']),
         'submodel_core_fields': raw['submodel_core_fields']['values'],
     }

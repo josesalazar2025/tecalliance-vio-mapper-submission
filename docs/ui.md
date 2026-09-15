@@ -9,6 +9,7 @@ The interface lets a reviewer:
 - upload an authorized registry workbook or delimited file;
 - inspect accepted and unresolved totals;
 - review grouped questions and candidate-level evidence;
+- inspect review-only text similarity used to order otherwise tied candidates;
 - inspect rule and audit information; and
 - download the generated workbook.
 

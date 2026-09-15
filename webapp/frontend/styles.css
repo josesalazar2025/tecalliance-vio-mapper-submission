@@ -180,7 +180,7 @@ button { font-family: var(--font-body); font-size: 13px; cursor: pointer; }
 .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--circuit-400); font-weight: 600; }
 .stat .value { font-family: var(--font-heading); font-size: 28px; font-weight: 600; line-height: 1.15; margin-top: 4px; }
 .stat .sub { font-size: 12px; color: var(--circuit-400); margin-top: 2px; }
-.stat.accent { border-left: 3px solid var(--ignition-500); }
+.stat.accent { border-left: 0px solid var(--ignition-500); }
 .stat.good .value { color: var(--success-700); }
 .stat.warn .value { color: var(--ignition-700); }
 
@@ -195,7 +195,7 @@ button { font-family: var(--font-body); font-size: 13px; cursor: pointer; }
 .grid-2 > * { min-width: 0; }
 .section { margin-bottom: 20px; }
 .section > h2 { margin-bottom: 4px; }
-.section > .blurb { color: var(--circuit-400); font-size: 12.5px; margin-bottom: 12px; max-width: 78ch; }
+.section > .blurb { color: var(--circuit-400); font-size: 12.5px; margin-bottom: 12px; max-width: 100ch; }
 
 /* ---------- Tables ---------------------------------------------------- */
 .table-wrap { overflow-x: auto; }
