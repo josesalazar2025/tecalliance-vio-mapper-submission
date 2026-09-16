@@ -22,9 +22,6 @@ RULES_DIR = PACKAGE_ROOT / 'rules'
 REGISTRIES_DIR = RULES_DIR / 'registries'
 CATALOGUES_DIR = RULES_DIR / 'catalogues'
 MANUFACTURER_RULES_DIR = RULES_DIR / 'manufacturers'
-# NZ-specific and named so: both are replaced when the country changes, which is
-# why they live beside the registry vocabulary rather than in the generic rules.
-VIN_RULES_PATH = REGISTRIES_DIR / 'nz_vin_rules.json'  # the default registry's; see vin_rules_path()
 
 SOURCE_NAME = 'nz_gov_data_subset.xlsx'
 REFERENCE_NAME = 'RDM_CARPARK_NZ_20250801_subset.xlsx'
@@ -603,11 +600,6 @@ def registry_vocabulary(name: str = '') -> dict:
         'body_types_by_vehicle_type': {name: set(entry['body_types'])
                                        for name, entry in values('registry_vehicle_types').items()},
     }
-
-
-def nzta_vocabulary() -> dict:
-    """Deprecated alias for :func:`registry_vocabulary`, kept for one release."""
-    return registry_vocabulary()
 
 
 @lru_cache(maxsize=None)

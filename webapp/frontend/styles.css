@@ -144,8 +144,6 @@ button { font-family: var(--font-body); font-size: 13px; cursor: pointer; }
 .btn-primary:disabled { background: var(--circuit-100); color: var(--circuit-400); cursor: not-allowed; }
 .btn-ghost { background: var(--white); border-color: var(--circuit-100); color: var(--circuit-700); }
 .btn-ghost:hover { border-color: var(--circuit-300); background: var(--circuit-50); }
-.btn-dark { background: var(--circuit-800); color: var(--white); }
-.btn-dark:hover { background: var(--circuit-700); }
 .btn-lg { padding: 11px 22px; font-size: 14px; }
 
 /* ---------- Run bar --------------------------------------------------- */
@@ -366,11 +364,6 @@ dl.pairs dd { margin: 0; word-break: break-word; }
 .fchip.unknown { background: var(--circuit-50); color: var(--circuit-400); }
 
 /* ---------- Rules ----------------------------------------------------- */
-.weight-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--circuit-50); }
-.weight-row .name { width: 140px; font-weight: 600; font-size: 12.5px; }
-.weight-row .bar { flex: 1; }
-.weight-row .pts { width: 44px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; }
-.weight-row .bar > span { background: var(--ignition-500); }
 
 details.fold { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--white); margin-bottom: 10px; }
 details.fold > summary {
