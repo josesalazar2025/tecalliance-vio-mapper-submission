@@ -16,7 +16,7 @@ from .config import (ALGORITHM_VERSION, DEFAULT_REFERENCE_PATH, DEFAULT_REGISTRY
                      DEFAULT_SOURCE_PATH, EVIDENCE_RETENTION, EXCEL_MAX_ROWS, PROJECT_ROOT,
                      REGISTRIES_DIR, STREAM_ROW_THRESHOLD, Policy,
                      available_registries,
-                     registry_file, score_rules, use_registry, vin_rules_path)
+                     use_registry, vin_rules_path)
 from .pipeline import map_vehicles, map_vehicles_streaming
 from .reporting import build_sheets, performance_report, write_workbook
 from .sources import load_source

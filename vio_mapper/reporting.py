@@ -15,9 +15,9 @@ import pandas as pd
 from .config import (attainable_score, ALL_CANDIDATES_CONTRADICTED, ALL_STATUSES, AMBIGUOUS, BELOW_THRESHOLD,
                      CRITERION_SET,
                      CONFLICT,
-                     INSUFFICIENT, MATCHED, NO_CANDIDATE_IN_REFERENCE, PROPOSED,
+                     MATCHED, NO_CANDIDATE_IN_REFERENCE, PROPOSED,
                      SOLE_CANDIDATE_INCOMPLETE, column, policy_decisions,
-                     registry_report_notes, score_rules)
+                     registry_report_notes)
 from .normalization import normalized_text
 
 WORKBOOK_SHEETS = ('Results', 'Candidate_Evidence', 'Review_Queue', 'Review_Detail', 'Duplicates',
@@ -303,59 +303,6 @@ def _evaluation_limits_section(results: pd.DataFrame, unique: pd.DataFrame) -> l
             'no additional ground-truth examples are assumed.', '',
             "See the workbook's Candidate_Evidence sheet for rejected alternatives and the Results sheet for row-level reasons. "
             'Unaccepted rows never enter the VIO sheet.', '']
-
-
-def scoring_policy_frame(policy) -> pd.DataFrame:
-    """The scoring settings as a sheet, so the workbook explains its own numbers."""
-    rules = score_rules()
-    rows = [{'item': f'{field} agreement', 'points_or_setting': weight,
-             'meaning': 'Only exact agreement earns points, before group caps.'}
-            for field, weight in rules['field_weights'].items()]
-    rows += [{'item': f'{group} cap', 'points_or_setting': cap,
-              'meaning': 'Maximum contribution from this group.'}
-             for group, cap in rules['group_caps'].items()]
-    rows += [{'item': f'{field} review conflict class', 'points_or_setting': conflict_class,
-              'meaning': 'Unresolved candidate ordering only; never changes compatibility or assignment.'}
-             for field, conflict_class in rules['review_conflict_classes'].items()]
-    rows += [
-        {'item': 'acceptance threshold', 'points_or_setting': policy.accept_score,
-         'meaning': 'Score route only; the sole-candidate complete-version route bypasses this threshold.'},
-        {'item': 'minimum margin', 'points_or_setting': policy.min_margin,
-         'meaning': 'Lead over all specification-compatible rivals; exact ties never accepted.'},
-        {'item': 'identity', 'points_or_setting': rules['group_caps']['identity'],
-         'meaning': 'Specific Type_design match counted once across all identifier fields; never family substring hits or 7AT.'},
-        {'item': 'registration year overlap', 'points_or_setting': policy.year_weight,
-         'meaning': 'Overlap is weak support. Outside interval or missing: zero points; early-registration veto is separate.'},
-        {'item': 'year outside production interval', 'points_or_setting': 'review context',
-         'meaning': 'Apparent chronology inconsistency; neutral for default matching because field semantics are mixed.'},
-        {'item': 'explicit engine code conflict', 'points_or_setting': 'veto',
-         'meaning': 'Scoped complete Hyundai prefixes and documented VIN comparisons; unknown formats stay unknown.'},
-        {'item': 'power tolerance', 'points_or_setting': f'{policy.power_tolerance_pct:g}% of reference',
-         'meaning': 'Zero by default: power must agree exactly, because no non-zero band is derivable '
-                    'from the data. A non-zero value is an explicit assumption; near power still earns '
-                    'no agreement points and dependent selections are flagged.'},
-        {'item': 'power triage band', 'points_or_setting': f'{policy.power_triage_kw:g} kW (review only)',
-         'meaning': 'Review heuristic for integer power fields. A small gap may reflect rounding, '
-                    'but the publishers rounding conventions are not established. '
-                    'Names a candidate for review only; never makes a candidate compatible, '
-                    'earns no points and accepts nothing.'},
-        {'item': 'year mode', 'points_or_setting': policy.year_mode,
-         'meaning': 'Gate mode excludes candidates starting after the registry year; soft mode is diagnostic.'},
-        {'item': 'missing evidence', 'points_or_setting': 0,
-         'meaning': 'No normalization by available fields; no presence bonus.'},
-        {'item': 'contradictions', 'points_or_setting': 'veto',
-         'meaning': 'Cannot be offset by high scores; rejected candidate scores are diagnostic only.'},
-        {'item': 'interpretation', 'points_or_setting': 'uncalibrated support',
-         'meaning': 'Weights and cutoffs are documented hypotheses, not probabilities or measured accuracy.'},
-    ]
-    diagnostic = not policy.use_scoring or policy.selection != 'score'
-    for row in rows:
-        if row['item'] in ('acceptance threshold', 'minimum margin') and diagnostic:
-            row['meaning'] = 'Inactive for acceptance in this run; score diagnostic only.'
-    rows.insert(0, {'item': 'active decision policy',
-                    'points_or_setting': 'rules-only' if not policy.use_scoring else policy.selection,
-                    'meaning': selection_description(policy)})
-    return pd.DataFrame(rows)
 
 
 def _candidate_summary(row) -> tuple[str, str]:

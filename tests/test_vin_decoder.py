@@ -2,7 +2,6 @@ import hashlib
 import json
 import re
 import unittest
-from pathlib import Path
 
 from vio_mapper.config import PROJECT_ROOT, RULES_DIR, vin_rules_path
 from vio_mapper.vin_decoder import decode_nz_vin
