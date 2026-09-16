@@ -23,7 +23,8 @@ from .config import (ACCEPTED_ON_DOMINANCE, ACCEPTED_ON_SCORE, ACCEPTED_ON_UNIQU
                      EXPORTED_REFERENCE_COLUMNS, FIELD_VALUE_SOURCES, IDENTIFIER_DISAGREEMENT,
                      IDENTIFIER_UNSUPPORTED, IDENTIFIER_VS_SPECIFICATION,
                      IDENTIFIER_WITHOUT_SPECIFICATION, UNEARNED_ELIMINATION, VERSION_CRITERIA,
-                     INSUFFICIENT, MATCHED, MINIMUM_ANCHOR_FIELDS, NARROW_MARGIN, NO_CANDIDATE,
+                     INSUFFICIENT, MATCHED, MINIMUM_ANCHOR_FIELDS, NARROW_MARGIN,
+                     NEAR_POWER_ONLY, NO_CANDIDATE,
                      NO_CANDIDATE_IN_REFERENCE, PROPOSED, SOLE_CANDIDATE_INCOMPLETE,
                      column, identifiers, identifiers_where,
                      source_field,
@@ -137,6 +138,29 @@ def blocking_conflicts(details) -> tuple[list[str], str]:
     most = max(counts.values())
     return (sorted(field for field, n in counts.items() if n == most),
             f'{most} of {len(conflict_sets)} candidates')
+
+
+def near_power_candidates(details) -> list:
+    """Contradicted candidates whose only disagreement is a power difference
+    inside the review band.
+
+    Says nothing about whether such a candidate is the right one. It records
+    that the row stopped on a number the two publishers may simply have rounded
+    differently rather than on a specification they disagree about, so the
+    question can be put to the data owner as a question rather than filed as a
+    rejection. The band is ``power_triage_kw``, which is engineering's to set
+    precisely because it cannot accept anything: acceptance stays with
+    ``power_tolerance_pct``, and this function is never consulted for it.
+    """
+    found = []
+    for entry in details:
+        if entry['compatible']:
+            continue
+        conflicts = {core_conflict(name)
+                     for name in entry['disagreements'].split('; ') if name}
+        if conflicts == {'power'} and entry.get('power_within_triage_band'):
+            found.append(entry['KType'])
+    return sorted(found)
 
 
 def identifier_proposal(details, anchors: AnchorState):
@@ -390,6 +414,12 @@ def _candidate_availability_outcome(details, compatible, anchors, policy) -> Out
         coverage = f' on {scope}' if scope else ''
         reason = ('All candidate variants have specification or chronology conflicts; manual review required.'
                   + (f' Blocked{coverage} by: {named}.' if named else ''))
+        near_power = near_power_candidates(details)
+        if near_power:
+            reason += (' The closest candidate differs only on power, by less than the review band'
+                       f" ({'; '.join(map(str, near_power))}): whether the two catalogues record that"
+                       ' number the same way is a question for the data owner. No kType is assigned'
+                       ' and the vehicle is not counted in VIO.')
         lead = triage_lead(details, policy)
         if lead is not None and lead['kType'] is None:
             reason += (f" Shortlist for review: kTypes {'; '.join(map(str, lead['alternatives']))}"
@@ -400,7 +430,8 @@ def _candidate_availability_outcome(details, compatible, anchors, policy) -> Out
             reason += (f" Closest candidate for review is kType {lead['kType']}, {lead['basis']}."
                        ' Named for triage only: no kType is assigned and the vehicle is not counted in VIO.'
                        + others)
-        return Outcome(ALL_CANDIDATES_CONTRADICTED, None, reason, ALL_CONTRADICTED,
+        return Outcome(ALL_CANDIDATES_CONTRADICTED, None, reason,
+                       NEAR_POWER_ONLY if near_power else ALL_CONTRADICTED,
                        fields=named, fields_scope=scope, lead=lead)
     if anchors.unsupported:
         return Outcome(INSUFFICIENT, None,
@@ -823,6 +854,23 @@ def differentiating_fields(details, ktypes) -> str:
     return '; '.join(parts)
 
 
+def _values_focus(details, lead) -> int | None:
+    """Which candidate's values :func:`blocking_values` should quote.
+
+    The triage lead where there is one. Otherwise a lone near-power candidate,
+    because the spread that would be printed instead hides exactly the fact the
+    row turns on: quoting ``reference 84-206 kW across 27 candidates`` for a row
+    whose closest candidate reads 126 kW against the register's 125 kW tells a
+    reviewer nothing. With several such candidates the spread is kept -- naming
+    one of them would suggest a preference between them that nothing here has
+    earned.
+    """
+    if lead is not None and lead['kType'] is not None:
+        return lead['kType']
+    near_power = near_power_candidates(details)
+    return near_power[0] if len(near_power) == 1 else None
+
+
 def blocking_values(row, details, fields: str, focus: int | None = None) -> str:
     """The source and reference values behind each field that stopped the row.
 
@@ -954,7 +1002,7 @@ def decide(row, candidates, policy, *, include_score_diagnostics: bool = True) -
                   details, outcome.tied if outcome.tied is not None else leaders)
                                         if outcome.status == AMBIGUOUS else '',
               'blocking_values': blocking_values(row, details, outcome.fields,
-                                                 lead['kType'] if lead else None)
+                                                 _values_focus(details, lead))
                                  if outcome.status == ALL_CANDIDATES_CONTRADICTED else '',
               'proposed_kType': proposal['kType'] if proposal else None,
               'proposal_basis': proposal['basis'] if proposal else '',

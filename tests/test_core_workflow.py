@@ -7,9 +7,9 @@ import pandas as pd
 
 from vio_mapper.cli import main
 from vio_mapper.chassis_decoder import decode_chassis_model
-from vio_mapper.config import (ALL_CANDIDATES_CONTRADICTED, AMBIGUOUS, CONFLICT, MATCHED,
-                               NO_CANDIDATE_IN_REFERENCE, NOT_SEPARATED, PROJECT_ROOT, RULES_DIR, Policy,
-                               available_registries)
+from vio_mapper.config import (ALL_CANDIDATES_CONTRADICTED, ALL_CONTRADICTED, AMBIGUOUS, CONFLICT,
+                               MATCHED, NEAR_POWER_ONLY, NO_CANDIDATE_IN_REFERENCE, NOT_SEPARATED,
+                               PROJECT_ROOT, RULES_DIR, Policy, available_registries)
 from vio_mapper.pipeline import map_vehicles, map_vehicles_streaming
 from vio_mapper.reporting import review_queue
 from vio_mapper.review_ranking import order_review_candidates
@@ -594,3 +594,32 @@ def test_reference_requires_engine_code_before_matching():
         assert 'Engine_code' in str(error)
     else:
         raise AssertionError('reference without Engine_code was accepted')
+
+
+def test_near_power_stop_is_classified_apart_from_a_specification_disagreement():
+    """The register and the catalogue rounding one number differently is not the
+    same stop as the two disagreeing about a specification, and the sub-status
+    has to say which. Neither may be accepted."""
+    near = reference({**REFERENCE_ROW, 'Maximum_output_KW': 111})
+    results, _ = map_vehicles(source(), near)
+    row = results.loc[0]
+    assert row['Match_Status'] == ALL_CANDIDATES_CONTRADICTED
+    assert row['Review_Category'] == NEAR_POWER_ONLY
+    # The stop is quoted against the candidate it turns on, not as a spread that
+    # would hide a one-kW gap among every rejected candidate's values.
+    assert row['blocking_values'] == 'power: source 110 kW, reference 111 kW (kType 1)'
+
+    far = reference({**REFERENCE_ROW, 'Maximum_output_KW': 130})
+    assert map_vehicles(source(), far)[0].loc[0, 'Review_Category'] == ALL_CONTRADICTED
+
+
+def test_the_near_power_classification_accepts_nothing():
+    """The guard on the whole change: a sub-status may describe a stop, never
+    lift it. power_tolerance_pct is the data owner's and is untouched here."""
+    near = reference({**REFERENCE_ROW, 'Maximum_output_KW': 111})
+    results, evidence = map_vehicles(source(), near)
+    row = results.loc[0]
+    assert pd.isna(row['mapped kType'])
+    assert not row['count_in_vio']
+    assert not evidence['compatible'].any()
+    assert Policy().power_tolerance_pct == 0.0

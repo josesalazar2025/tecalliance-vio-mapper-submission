@@ -176,6 +176,14 @@ def _status_section(results: pd.DataFrame, unique: pd.DataFrame, accepted: int) 
     for status in ALL_STATUSES:
         subset = results[results['Match_Status'] == status]
         lines.append(f"| {status} | {len(subset)} | {_normalized_ids(subset).nunique()} |")
+    # Read without this, a zero on that row says the reference covered every vehicle,
+    # which it does not: the status counts one way of missing and not the other.
+    lines += ['',
+              f'`{NO_CANDIDATE_IN_REFERENCE}` counts only vehicles whose normalized make and model '
+              'match no reference row at all. A vehicle whose make and model are present but whose '
+              f'version is not -- no candidate at its capacity or power -- stops as `{ALL_CANDIDATES_CONTRADICTED}`, '
+              'which the same status also gives to a vehicle the reference does carry and disagrees with. '
+              'The two are told apart by the quoted values in *Where coverage is lost*, not by the status.']
     return lines
 
 
@@ -213,12 +221,15 @@ def _lost_coverage_section(unique: pd.DataFrame) -> list[str]:
              'field the row stopped on. These classify why the row stopped; they do not claim which source is wrong. '
              'A field marked *every candidate* has to be reconciled before the row can be matched at all; one marked '
              'with a count blocks only that many candidates, so it is the most frequent obstacle rather than a '
-             'universal one.', '',
-             '| Review sub-status | Field | Covers | Status | Distinct IDs |', '|---|---|---|---|---:|']
+             'universal one. The last column quotes both catalogues verbatim, because the field name alone does not '
+             'distinguish a vehicle the reference does not carry from one it records a few units away.', '',
+             '| Review sub-status | Field | Covers | Source vs reference | Status | Distinct IDs |',
+             '|---|---|---|---|---|---:|']
     for key, group in unresolved.groupby(['Review_Category', 'Review_Fields', 'Review_Fields_scope',
-                                          'Match_Status'], sort=True):
-        category, review_fields, scope, status = key
-        lines.append(f"| {category} | {review_fields or '—'} | {scope or '—'} | {status} | {len(group)} |")
+                                          'blocking_values', 'Match_Status'], sort=True):
+        category, review_fields, scope, values, status = key
+        lines.append(f"| {category} | {review_fields or '—'} | {scope or '—'} | {values or '—'} | "
+                     f'{status} | {len(group)} |')
     return lines
 
 
