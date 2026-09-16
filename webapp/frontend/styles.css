@@ -181,6 +181,11 @@ button { font-family: var(--font-body); font-size: 13px; cursor: pointer; }
 .stat.accent { border-left: 0px solid var(--ignition-500); }
 .stat.good .value { color: var(--success-700); }
 .stat.warn .value { color: var(--ignition-700); }
+/* A labelled second row of stats. The tiles already carry their own surface,
+   so the group takes no background of its own -- a card here would wrap a
+   border around bordered tiles and read as a separate panel. */
+.stat-group > h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+                   color: var(--circuit-400); font-weight: 600; margin: 0 0 8px; }
 
 .caveat {
   display: flex; gap: 9px; align-items: flex-start;
