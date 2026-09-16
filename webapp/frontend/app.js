@@ -11,7 +11,7 @@
  * different number it is serving a different set of field names, and figures
  * this script asks for by name would silently render as em dashes. Say so
  * instead: in practice it means a server was left running across a code change. */
-const EXPECTED_PAYLOAD_VERSION = 8;
+const EXPECTED_PAYLOAD_VERSION = 9;
 
 const state = {
   defaults: null,
@@ -291,6 +291,9 @@ function renderSummary(panel) {
     el('span', { text: '⚠' }), el('div', { text: s.coverage_caveat }),
   ]));
 
+  const pending = renderPendingRulings();
+  if (pending) panel.append(pending);
+
   const maxStatus = Math.max(...s.status_counts.map((row) => row.distinct_ids), 1);
   const statusTable = tableCard('Outcome of every row', [
     {
@@ -340,6 +343,56 @@ function renderSummary(panel) {
   ]));
 
   panel.append(renderResultsTable());
+}
+
+/* ---------- Pending rulings --------------------------------------------- */
+
+/**
+ * What a decision the mapper is not entitled to make would be worth.
+ *
+ * Deliberately not a control. There is no button here because clicking one
+ * would assign kTypes on a rule nobody approved, and the workbook the user
+ * downloads a moment later could not explain them. It states the forecast, who
+ * owns the decision, and that it has not been applied.
+ */
+function renderPendingRulings() {
+  const rulings = state.run.pending_rulings || [];
+  if (!rulings.length) return null;
+  return el('div', {}, rulings.map((r) => el('div', { class: 'ruling' }, [
+    el('div', { class: 'ruling-head' }, [
+      el('h2', { text: 'Waiting on a decision that is not ours to make' }),
+      el('span', { class: 'pill pill-pending', text: 'not applied' }),
+    ]),
+    el('p', { class: 'ruling-q', text: r.question }),
+    el('div', { class: 'ruling-figures' }, [
+      el('div', { class: 'ruling-fig' }, [
+        el('div', { class: 'label', text: 'Accepted under the documented policy' }),
+        el('div', { class: 'value', text: `${num(r.accepted_now)} / ${num(r.distinct_ids)}` }),
+        el('div', { class: 'sub', text: `${r.pct_now}% coverage` }),
+      ]),
+      el('div', { class: 'ruling-arrow', text: '→' }),
+      el('div', { class: 'ruling-fig pending' }, [
+        el('div', { class: 'label', text: 'If this ruling were approved' }),
+        el('div', { class: 'value', text: `${num(r.accepted_if_approved)} / ${num(r.distinct_ids)}` }),
+        el('div', { class: 'sub', text: `${r.pct_if_approved}% coverage · +${num(r.vehicles)} vehicles` }),
+      ]),
+    ]),
+    el('dl', { class: 'pairs' }, [
+      el('dt', { text: 'Decision owner' }),
+      el('dd', {}, [el('span', { class: 'mono', text: r.owner })]),
+      el('dt', { text: 'What would have to change' }),
+      el('dd', { text: r.settings.join(' · ') }),
+      el('dt', { text: 'Vehicles, by the kType they would resolve to' }),
+      el('dd', {}, r.candidates.flatMap((c, i) => [
+        i ? el('span', { text: ' · ' }) : null,
+        el('span', { class: 'mono', text: kType(c.kType) }),
+        el('span', { text: ` (${num(c.vehicles)})` }),
+      ])),
+    ]),
+    el('div', { class: 'caveat' }, [
+      el('span', { text: '⚠' }), el('div', { text: r.note }),
+    ]),
+  ])));
 }
 
 /* ---------- Results table ------------------------------------------------ */

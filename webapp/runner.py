@@ -144,6 +144,7 @@ def execute(upload_name: str, upload_bytes: bytes, policy: Policy, store: RunSto
         'summary': payload.summary(results, evidence, metadata, run.source_name, elapsed),
         'results': payload.records(results, payload.table_columns()),
         'review': payload.review_brief(results, evidence),
+        'pending_rulings': payload.pending_rulings(results, evidence),
         'audit': payload.audit(results, evidence, metadata, report),
         'rules': payload.rules(policy),
         'download_name': workbook.name,
