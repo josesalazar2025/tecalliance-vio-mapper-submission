@@ -44,8 +44,15 @@ def read_delimited(path: Path) -> pd.DataFrame:
     return frame.replace('', pd.NA)
 
 
-def load_source(path: Path) -> pd.DataFrame:
-    """Load the government file, whichever of the two supported shapes it is."""
+def load_source(path: Path | str) -> pd.DataFrame:
+    """Load the government file, whichever of the two supported shapes it is.
+
+    Accepts a string as well as a Path: callers outside the CLI -- notebooks, the
+    benchmark, an ad-hoc reproduction of a documented figure -- naturally pass a
+    literal, and failing on one with an AttributeError about `.suffix` is a worse
+    answer than coercing it here.
+    """
+    path = Path(path)
     if path.suffix.lower() in DELIMITED_SUFFIXES:
         frame = read_delimited(path).assign(
             source_sheet=path.name,

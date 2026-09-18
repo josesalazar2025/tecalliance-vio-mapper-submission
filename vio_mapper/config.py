@@ -17,7 +17,11 @@ ALGORITHM_VERSION = '1.1.0'
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent
-DATA_DIR = Path.cwd() / 'data'
+# Anchored to the repository rather than to the process working directory: the
+# CLI defaults name the two supplied workbooks, and a default that silently means
+# a different file depending on where the command was typed is not a default. An
+# explicit --source/--reference still overrides it.
+DATA_DIR = PROJECT_ROOT / 'data'
 RULES_DIR = PACKAGE_ROOT / 'rules'
 REGISTRIES_DIR = RULES_DIR / 'registries'
 CATALOGUES_DIR = RULES_DIR / 'catalogues'
@@ -82,6 +86,14 @@ MODEL_CODE_HINT_VS_SPECIFICATION = 'model-code hint contradicted by specificatio
 IDENTIFIER_UNSUPPORTED = 'identifier absent from candidate reference'
 NO_CANDIDATE = 'no candidate passes make/model gates'
 ALL_CONTRADICTED = 'every candidate contradicts specifications'
+# A narrower reading of the same stop. Separated from ALL_CONTRADICTED because the
+# two route to different desks: a specification disagreement is a data question,
+# while a difference inside the engineering review band is a question about how the
+# two publishers rounded one number. It classifies the stop and nothing else -- the
+# headline status, the assignment and the VIO count are identical either way, and
+# whether such a difference may ever be accepted stays with power_tolerance_pct,
+# which is the data owner's to set.
+NEAR_POWER_ONLY = 'closest candidate differs only on power, within the review band'
 TIED_CANDIDATES = 'candidates tied'
 SEPARABLE_ONLY_BY_SCOPED_RULE = 'separable only by a model-specific reading'
 NARROW_MARGIN = 'margin below minimum'
@@ -122,7 +134,7 @@ STATUS_CATEGORIES = {
     CONFLICT: frozenset({SELF_CONTRADICTION, VIN_CONTRADICTION, DUPLICATE_CONFLICT,
                          IDENTIFIER_DISAGREEMENT, IDENTIFIER_VS_SPECIFICATION}),
     NO_CANDIDATE_IN_REFERENCE: frozenset({NO_CANDIDATE}),
-    ALL_CANDIDATES_CONTRADICTED: frozenset({ALL_CONTRADICTED}),
+    ALL_CANDIDATES_CONTRADICTED: frozenset({ALL_CONTRADICTED, NEAR_POWER_ONLY}),
     # One entry per selector, and no more: the score route stops such a row on
     # its threshold, the dominance route on a version criterion that went
     # unanswered. Both are the same situation and neither is the other's reason.
@@ -159,8 +171,10 @@ VARIANT_CRITERIA = ('body', 'engine', 'drive')
 # free text: Holden sold no single-cab pickup, but that is a fact about one model's
 # lineup, not a rule that generalises to every light commercial in TecDoc. Where two
 # candidates differ only by body, vetoing one is equivalent to selecting the other, so
-# a scoped reading would silently decide the row. It now names the likely candidate and
-# sends the row to review instead; see decision.scoped_structural_preference.
+# a scoped reading would silently decide the row. It names the likely candidate and
+# sends the row to review instead; see decision.scoped_structural_preference -- which is
+# itself inert on every registry shipped here, because the cab vocabulary it reads carries
+# no body restriction and submodel_cab never resolves. Both facts are recorded there.
 VETO_FIELDS = (*COMPARED_FIELDS, 'vin_generation', 'vin_drive', 'vin_engine',
                'chassis_model_comparison', 'chronology',
                'submodel_capacity', 'submodel_fuel_family', 'submodel_hybrid',
@@ -278,10 +292,22 @@ class Policy:
     # with, and reads none of the four field weights, four group caps, threshold
     # or margin -- none of which is grounded in anything, as scoring.json says of
     # itself. It is the default because a weighted total asserts magnitudes and a
-    # commensurability between them that no cited source establishes, and the
-    # measurement says the assertion buys almost nothing: 97.3%, 100.0% and 98.0%
-    # identical outcomes over three catalogue pairs, with no row ever reassigned
-    # from one kType to another.
+    # commensurability between them that no cited source establishes, and because
+    # the two selectors agree on what they accept far more often than the weights
+    # would suggest.
+    #
+    # On the supplied catalogue pair the two selectors return the same outcome on
+    # 106 of 112 rows (94.6%). Every difference is dominance accepting where score
+    # refuses -- the six X-Trail hybrids -- and **no row is ever reassigned from
+    # one kType to another by the choice of selector**, which is the property that
+    # matters: the selectors differ in how much evidence they demand, not in which
+    # vehicle they think they are looking at. Reproduce with
+    # Policy(selection='score') against the default.
+    #
+    # The percentage is quoted for this pair only. An earlier revision of this
+    # comment cited three figures for three catalogue pairs without naming them,
+    # which is not reproducible from anything in this repository; it has been
+    # replaced by the one measurement a reviewer can rerun from the supplied data.
     #
     # 'score' retains the weighted total, for the reason --rules-only retains the
     # policy that predated scoring: so the contribution of a mechanism can be

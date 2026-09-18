@@ -308,7 +308,10 @@ def candidate_checks(context: dict, candidate) -> dict:
     #
     # 'cab' likewise stays unknown. Excluding PICKUP for a single cab needed a
     # Holden model-lineup specification that is not one of this project's sources,
-    # and the RDM carries no cab column to replace it with.
+    # and the RDM carries no cab column to replace it with. Because it is unknown
+    # on every row, decision.scoped_structural_preference cannot fire: that is why
+    # the Colorado rows stop as 'candidates not separated' and need the KT 086
+    # ruling rather than a reading of this field.
     return {**{'submodel_' + key: value for key, value in checks.items()}, **NOT_COMPARABLE}
 
 

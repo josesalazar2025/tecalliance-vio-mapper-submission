@@ -17,6 +17,7 @@ build-backend = "setuptools.build_meta"
 [project.scripts]
 vio-mapper = "vio_mapper.cli:main"
 vio-mapper-ui = "webapp.__main__:main"
+vio-mapper-bench = "vio_mapper.benchmark:main"
 
 [project.optional-dependencies]
 web = [

@@ -23,7 +23,8 @@ from .config import (ACCEPTED_ON_DOMINANCE, ACCEPTED_ON_SCORE, ACCEPTED_ON_UNIQU
                      EXPORTED_REFERENCE_COLUMNS, FIELD_VALUE_SOURCES, IDENTIFIER_DISAGREEMENT,
                      IDENTIFIER_UNSUPPORTED, IDENTIFIER_VS_SPECIFICATION,
                      IDENTIFIER_WITHOUT_SPECIFICATION, UNEARNED_ELIMINATION, VERSION_CRITERIA,
-                     INSUFFICIENT, MATCHED, MINIMUM_ANCHOR_FIELDS, NARROW_MARGIN, NO_CANDIDATE,
+                     INSUFFICIENT, MATCHED, MINIMUM_ANCHOR_FIELDS, NARROW_MARGIN,
+                     NEAR_POWER_ONLY, NO_CANDIDATE,
                      NO_CANDIDATE_IN_REFERENCE, PROPOSED, SOLE_CANDIDATE_INCOMPLETE,
                      column, identifiers, identifiers_where,
                      source_field,
@@ -139,6 +140,29 @@ def blocking_conflicts(details) -> tuple[list[str], str]:
             f'{most} of {len(conflict_sets)} candidates')
 
 
+def near_power_candidates(details) -> list:
+    """Contradicted candidates whose only disagreement is a power difference
+    inside the review band.
+
+    Says nothing about whether such a candidate is the right one. It records
+    that the row stopped on a number the two publishers may simply have rounded
+    differently rather than on a specification they disagree about, so the
+    question can be put to the data owner as a question rather than filed as a
+    rejection. The band is ``power_triage_kw``, which is engineering's to set
+    precisely because it cannot accept anything: acceptance stays with
+    ``power_tolerance_pct``, and this function is never consulted for it.
+    """
+    found = []
+    for entry in details:
+        if entry['compatible']:
+            continue
+        conflicts = {core_conflict(name)
+                     for name in entry['disagreements'].split('; ') if name}
+        if conflicts == {'power'} and entry.get('power_within_triage_band'):
+            found.append(entry['KType'])
+    return sorted(found)
+
+
 def identifier_proposal(details, anchors: AnchorState):
     """Triage only: name the candidate the identifiers point at, never accept it.
 
@@ -207,27 +231,15 @@ def triage_lead(details, policy):
     Chronology is excluded for the reason identifier proposals exclude it: a
     production interval that cannot contain the vehicle suggests the wrong
     candidate altogether, not a near miss.
-    """
-    # Marketing litres are deliberately a shortlist criterion, not a
-    # compatibility criterion.  Use them only when every gated candidate states
-    # a comparable value and the agreement genuinely narrows the pool.  Unknown
-    # values must never be silently eliminated.
-    litre_matches = [entry for entry in details
-                     if entry.get('submodel_capacity_litre') == 'agree']
-    litre_comparable = [entry for entry in details
-                        if entry.get('submodel_capacity_litre') in {'agree', 'disagree'}]
-    if (litre_matches and len(litre_comparable) == len(details)
-            and len(litre_matches) < len(details)):
-        alternatives = sorted(entry['KType'] for entry in litre_matches)
-        return {
-            'kType': None,
-            'field': 'submodel capacity',
-            'alternatives': alternatives,
-            'basis': (f"{column('submodel')} capacity agrees numerically with reference "
-                      f"Capacity_litre for {len(alternatives)} of {len(details)} candidates; "
-                      'decimal point and comma spellings are equivalent; shortlist only'),
-        }
 
+    The readings are tried strongest first, and that ordering is the whole point
+    of this function. Compatibility evidence -- which fields actually agreed and
+    disagreed -- comes before the marketing capacity written in the registration
+    text, because the first is the comparison the algorithm performed and the
+    second is a string a person typed. Trying the weaker reading first does not
+    merely mis-rank the queue: it returns early and suppresses the stronger one
+    entirely, so a row that could have named one kType names six instead.
+    """
     leads = []
     for entry in details:
         if entry['compatible'] or not entry['disagreements']:
@@ -236,8 +248,6 @@ def triage_lead(details, policy):
         if len(conflicts) != 1 or conflicts & score_rules()['unproposable_conflicts']:
             continue
         leads.append((entry, next(iter(conflicts))))
-    if not leads:
-        return None
     rounding = [pair for pair in leads if pair[1] == 'power' and pair[0]['power_within_triage_band']]
     if len(rounding) == 1:
         entry, conflict = rounding[0]
@@ -247,15 +257,43 @@ def triage_lead(details, policy):
     elif len(leads) == 1:
         entry, conflict = leads[0]
         basis = f'blocked only by {conflict}; every other compared specification agrees'
-    else:
+    elif len(leads) > 1:
         fields = '; '.join(sorted({conflict for _, conflict in leads}))
         return {'kType': None, 'field': fields, 'alternatives': sorted(e['KType'] for e, _ in leads),
                 'basis': f'{len(leads)} candidates are each blocked by exactly one specification '
                          f'({fields}); none is named, because choosing between them is the reviewer '
                          'decision, not a triage step'}
+    else:
+        return _litre_shortlist(details)
     return {'kType': entry['KType'], 'field': conflict, 'basis': basis,
             'alternatives': sorted(other['KType'] for other, _ in leads
                                    if other['KType'] != entry['KType'])}
+
+
+def _litre_shortlist(details):
+    """The weakest reading: marketing capacity in the registration text.
+
+    Deliberately a shortlist criterion and not a compatibility criterion, and
+    deliberately the last thing `triage_lead` tries. It is used only when every
+    gated candidate states a comparable value and the agreement genuinely narrows
+    the pool; unknown values must never be silently eliminated.
+    """
+    litre_matches = [entry for entry in details
+                     if entry.get('submodel_capacity_litre') == 'agree']
+    litre_comparable = [entry for entry in details
+                        if entry.get('submodel_capacity_litre') in {'agree', 'disagree'}]
+    if not (litre_matches and len(litre_comparable) == len(details)
+            and len(litre_matches) < len(details)):
+        return None
+    alternatives = sorted(entry['KType'] for entry in litre_matches)
+    return {
+        'kType': None,
+        'field': 'submodel capacity',
+        'alternatives': alternatives,
+        'basis': (f"{column('submodel')} capacity agrees numerically with reference "
+                  f"Capacity_litre for {len(alternatives)} of {len(details)} candidates; "
+                  'decimal point and comma spellings are equivalent; shortlist only'),
+    }
 
 
 def scoped_structural_preference(details, candidate_ids):
@@ -273,6 +311,26 @@ def scoped_structural_preference(details, candidate_ids):
     the answer, because with candidates identical in every other respect
     eliminating one *is* selecting the other. So the reading names the likely
     candidate for a reviewer and the row stays unassigned.
+
+    **Inert on the supplied catalogue pair, and on every registry shipped here.**
+    This function can only fire where `submodel_cab` resolves to 'consistent' or
+    'disagree'. It resolves to 'unknown' on all 7,645 candidate-evidence rows of
+    the supplied run, because the cab restriction it depends on was removed from
+    `rules/registries/nz.json`: that restriction rested on a Holden model-lineup
+    specification which is not an NZTA, TecAlliance or RDM source and could not be
+    produced for review. The removal is recorded in the `cab_configurations`
+    description in that file.
+
+    The consequence matters for reading the Colorado result and is stated here so
+    that nobody infers otherwise from this code: the ten Colorado rows stop as
+    `candidates not separated by criterion set`, not as `separable only by a
+    model-specific reading`, and separating them needs the KT 086 ruling named in
+    the review queue, not this function. The function is retained rather than
+    deleted because a registry that does publish a cab vocabulary would want
+    exactly this behaviour -- name the candidate, assign nothing -- and because
+    `SEPARABLE_ONLY_BY_SCOPED_RULE` is a declared status with a contract entry in
+    `config.STATUS_CATEGORIES` and a rendering path in the review UI. It is
+    unreachable today, not speculative.
     """
     considered = [entry for entry in details if entry['KType'] in candidate_ids]
     favoured = [entry for entry in considered if entry['submodel_cab'] == 'consistent']
@@ -390,6 +448,12 @@ def _candidate_availability_outcome(details, compatible, anchors, policy) -> Out
         coverage = f' on {scope}' if scope else ''
         reason = ('All candidate variants have specification or chronology conflicts; manual review required.'
                   + (f' Blocked{coverage} by: {named}.' if named else ''))
+        near_power = near_power_candidates(details)
+        if near_power:
+            reason += (' The closest candidate differs only on power, by less than the review band'
+                       f" ({'; '.join(map(str, near_power))}): whether the two catalogues record that"
+                       ' number the same way is a question for the data owner. No kType is assigned'
+                       ' and the vehicle is not counted in VIO.')
         lead = triage_lead(details, policy)
         if lead is not None and lead['kType'] is None:
             reason += (f" Shortlist for review: kTypes {'; '.join(map(str, lead['alternatives']))}"
@@ -400,7 +464,8 @@ def _candidate_availability_outcome(details, compatible, anchors, policy) -> Out
             reason += (f" Closest candidate for review is kType {lead['kType']}, {lead['basis']}."
                        ' Named for triage only: no kType is assigned and the vehicle is not counted in VIO.'
                        + others)
-        return Outcome(ALL_CANDIDATES_CONTRADICTED, None, reason, ALL_CONTRADICTED,
+        return Outcome(ALL_CANDIDATES_CONTRADICTED, None, reason,
+                       NEAR_POWER_ONLY if near_power else ALL_CONTRADICTED,
                        fields=named, fields_scope=scope, lead=lead)
     if anchors.unsupported:
         return Outcome(INSUFFICIENT, None,
@@ -823,6 +888,23 @@ def differentiating_fields(details, ktypes) -> str:
     return '; '.join(parts)
 
 
+def _values_focus(details, lead) -> int | None:
+    """Which candidate's values :func:`blocking_values` should quote.
+
+    The triage lead where there is one. Otherwise a lone near-power candidate,
+    because the spread that would be printed instead hides exactly the fact the
+    row turns on: quoting ``reference 84-206 kW across 27 candidates`` for a row
+    whose closest candidate reads 126 kW against the register's 125 kW tells a
+    reviewer nothing. With several such candidates the spread is kept -- naming
+    one of them would suggest a preference between them that nothing here has
+    earned.
+    """
+    if lead is not None and lead['kType'] is not None:
+        return lead['kType']
+    near_power = near_power_candidates(details)
+    return near_power[0] if len(near_power) == 1 else None
+
+
 def blocking_values(row, details, fields: str, focus: int | None = None) -> str:
     """The source and reference values behind each field that stopped the row.
 
@@ -954,7 +1036,7 @@ def decide(row, candidates, policy, *, include_score_diagnostics: bool = True) -
                   details, outcome.tied if outcome.tied is not None else leaders)
                                         if outcome.status == AMBIGUOUS else '',
               'blocking_values': blocking_values(row, details, outcome.fields,
-                                                 lead['kType'] if lead else None)
+                                                 _values_focus(details, lead))
                                  if outcome.status == ALL_CANDIDATES_CONTRADICTED else '',
               'proposed_kType': proposal['kType'] if proposal else None,
               'proposal_basis': proposal['basis'] if proposal else '',

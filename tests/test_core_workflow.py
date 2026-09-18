@@ -7,9 +7,9 @@ import pandas as pd
 
 from vio_mapper.cli import main
 from vio_mapper.chassis_decoder import decode_chassis_model
-from vio_mapper.config import (ALL_CANDIDATES_CONTRADICTED, AMBIGUOUS, CONFLICT, MATCHED,
-                               NO_CANDIDATE_IN_REFERENCE, NOT_SEPARATED, PROJECT_ROOT, RULES_DIR, Policy,
-                               available_registries)
+from vio_mapper.config import (ALL_CANDIDATES_CONTRADICTED, ALL_CONTRADICTED, AMBIGUOUS, CONFLICT,
+                               MATCHED, NEAR_POWER_ONLY, NO_CANDIDATE_IN_REFERENCE, NOT_SEPARATED,
+                               PROJECT_ROOT, RULES_DIR, Policy, available_registries)
 from vio_mapper.pipeline import map_vehicles, map_vehicles_streaming
 from vio_mapper.reporting import review_queue
 from vio_mapper.review_ranking import order_review_candidates
@@ -399,7 +399,15 @@ def test_mercedes_mvma_hint_never_excuses_capacity_conflict():
     assert pd.isna(results.loc[0, 'proposed_kType'])
 
 
-def test_submodel_litres_create_review_shortlist_after_candidate_gates():
+def test_compatibility_evidence_outranks_the_submodel_litre_shortlist():
+    """A candidate blocked by one field beats a shortlist built from marketing text.
+
+    Both readings are available here: the registration SUBMODEL says 1.5 and two
+    candidates agree with it, while a third candidate disagrees on capacity alone
+    and agrees on every other compared specification. The second is the stronger
+    statement about the vehicle, so it is the one the review queue must carry --
+    naming one kType rather than shortlisting two.
+    """
     vehicle = prepare_source(pd.DataFrame([
         {**MERCEDES_SOURCE, 'SUBMODEL': 'C 200 1.5P/9AT', 'CC_RATING': 1491,
          'VIN11': 'W1K2050802R', 'MVMA_MODEL_CODE': '20538022-NZ5'},
@@ -423,6 +431,45 @@ def test_submodel_litres_create_review_shortlist_after_candidate_gates():
     assert compared == {11: 'agree', 12: 'agree', 20: 'disagree'}
     assert results.loc[0, 'Match_Status'] == ALL_CANDIDATES_CONTRADICTED
     assert pd.isna(results.loc[0, 'proposed_kType'])
+    assert results.loc[0, 'triage_lead_kType'] == 20
+    assert results.loc[0, 'triage_lead_blocking_field'] == 'capacity'
+    assert 'decimal point and comma spellings' not in results.loc[0, 'triage_lead_basis']
+    assert pd.isna(results.loc[0, 'mapped kType'])
+
+
+def test_submodel_litres_create_review_shortlist_when_no_single_conflict_lead():
+    """The litre shortlist is the fallback, reached only when no lead qualifies.
+
+    Every candidate here is blocked by at least two specifications, so no
+    candidate is one field from compatible and the compatibility evidence names
+    nobody. The marketing capacity is then the only narrowing available, and it
+    is exported as a shortlist that assigns nothing.
+    """
+    vehicle = prepare_source(pd.DataFrame([
+        {**MERCEDES_SOURCE, 'SUBMODEL': 'C 200 1.5P/9AT', 'CC_RATING': 1491,
+         'VIN11': 'W1K2050802R', 'MVMA_MODEL_CODE': '20538022-NZ5'},
+    ]))
+    candidates = reference(
+        {**MERCEDES_REFERENCES[0], 'KType': 11, 'Capacity_litre': '1,5',
+         'Capacity_cubic': 1497, 'Maximum_output_KW': 135,
+         'Fuel_type': 'Petrol/Electric', 'Engine_code': 'M 264.915',
+         'Type_design': '205.077'},
+        {**MERCEDES_REFERENCES[1], 'KType': 12, 'Capacity_litre': '1.5',
+         'Capacity_cubic': 1497, 'Maximum_output_KW': 135,
+         'Fuel_type': 'Petrol/Electric', 'Engine_code': 'M 264.915',
+         'Type_design': '205.277'},
+        # Blocked on capacity *and* power, so it is not one field from compatible.
+        {**MERCEDES_REFERENCES[2], 'KType': 20, 'Capacity_litre': '2,0',
+         'Maximum_output_KW': 140, 'Type_design': '205.380'},
+    )
+
+    results, evidence = map_vehicles(vehicle, candidates)
+
+    compared = evidence.set_index('KType')['submodel_capacity_litre'].to_dict()
+    assert compared == {11: 'agree', 12: 'agree', 20: 'disagree'}
+    assert results.loc[0, 'Match_Status'] == ALL_CANDIDATES_CONTRADICTED
+    assert pd.isna(results.loc[0, 'proposed_kType'])
+    assert pd.isna(results.loc[0, 'triage_lead_kType'])
     assert results.loc[0, 'triage_lead_alternatives'] == '11; 12'
     assert 'decimal point and comma spellings are equivalent' in results.loc[0, 'triage_lead_basis']
 
@@ -594,3 +641,32 @@ def test_reference_requires_engine_code_before_matching():
         assert 'Engine_code' in str(error)
     else:
         raise AssertionError('reference without Engine_code was accepted')
+
+
+def test_near_power_stop_is_classified_apart_from_a_specification_disagreement():
+    """The register and the catalogue rounding one number differently is not the
+    same stop as the two disagreeing about a specification, and the sub-status
+    has to say which. Neither may be accepted."""
+    near = reference({**REFERENCE_ROW, 'Maximum_output_KW': 111})
+    results, _ = map_vehicles(source(), near)
+    row = results.loc[0]
+    assert row['Match_Status'] == ALL_CANDIDATES_CONTRADICTED
+    assert row['Review_Category'] == NEAR_POWER_ONLY
+    # The stop is quoted against the candidate it turns on, not as a spread that
+    # would hide a one-kW gap among every rejected candidate's values.
+    assert row['blocking_values'] == 'power: source 110 kW, reference 111 kW (kType 1)'
+
+    far = reference({**REFERENCE_ROW, 'Maximum_output_KW': 130})
+    assert map_vehicles(source(), far)[0].loc[0, 'Review_Category'] == ALL_CONTRADICTED
+
+
+def test_the_near_power_classification_accepts_nothing():
+    """The guard on the whole change: a sub-status may describe a stop, never
+    lift it. power_tolerance_pct is the data owner's and is untouched here."""
+    near = reference({**REFERENCE_ROW, 'Maximum_output_KW': 111})
+    results, evidence = map_vehicles(source(), near)
+    row = results.loc[0]
+    assert pd.isna(row['mapped kType'])
+    assert not row['count_in_vio']
+    assert not evidence['compatible'].any()
+    assert Policy().power_tolerance_pct == 0.0

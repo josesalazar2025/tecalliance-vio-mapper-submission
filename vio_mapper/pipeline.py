@@ -187,6 +187,25 @@ def _finalize(results: pd.DataFrame) -> pd.DataFrame:
     return results
 
 
+def _is_missing(value) -> bool:
+    """Whether one evidence value should be written as an empty CSV cell.
+
+    ``pd.isna`` returns an array for an array argument, so the identity test this
+    replaced (``pd.isna(value) is True``) was really two rules at once: blank a
+    missing scalar, and never blank a container. That happened to be right for
+    every value the evidence currently carries, all of which are scalars, but it
+    said so by accident. Scalars are checked explicitly here so that an
+    array-valued field added later raises rather than silently writing the repr
+    of an array into the audit trail.
+    """
+    if isinstance(value, (str, bytes)) or value is None:
+        return value is None
+    result = pd.isna(value)
+    if isinstance(result, bool):
+        return result
+    raise TypeError(f'candidate evidence must hold scalars; got {type(value).__name__}')
+
+
 def map_vehicles_streaming(source, reference, policy, evidence_path: Path, *,
                            include_score_diagnostics: bool = True):
     """Map with the candidate evidence written straight to CSV, never accumulated.
@@ -205,7 +224,7 @@ def map_vehicles_streaming(source, reference, policy, evidence_path: Path, *,
                 if writer is None:
                     writer = csv.DictWriter(handle, fieldnames=list(row))
                     writer.writeheader()
-                writer.writerow({key: ('' if pd.isna(value) is True else value)
+                writer.writerow({key: ('' if _is_missing(value) else value)
                                  for key, value in row.items()})
                 written += 1
 

@@ -11,7 +11,7 @@
  * different number it is serving a different set of field names, and figures
  * this script asks for by name would silently render as em dashes. Say so
  * instead: in practice it means a server was left running across a code change. */
-const EXPECTED_PAYLOAD_VERSION = 8;
+const EXPECTED_PAYLOAD_VERSION = 9;
 
 const state = {
   defaults: null,
@@ -287,9 +287,32 @@ function renderSummary(panel) {
       `${num(s.worksheet_rows)} rows weighed against their candidate kTypes`),
   ]));
 
+  // Second row of the same stats, not a card: these qualify the figures above,
+  // and a container around them would read as a separate finding.
+  const checks = [
+    ['Exact duplicate copies', num(s.duplicates), 'retained in the workbook, excluded from the VIO count'],
+    ['Duplicate ID conflicts', num(s.duplicate_conflicts), 'same ID, different values'],
+    ['Acceptances relying on power tolerance', num(s.power_tolerance_dependent),
+      s.power_tolerance_dependent ? 'each flagged per row with the kW and % gap' : 'power agreement is exact'],
+    ['Supplied labels', `${num(s.label_agreement.agree)} agree · ${num(s.label_agreement.disagree)} disagree · ${num(s.label_agreement.unassigned)} unassigned`,
+      `${num(s.label_agreement.labeled)} labelled vehicles; the labels cover one kType and do not measure general accuracy`],
+  ];
+  panel.append(el('div', { class: 'stat-group' }, [
+    el('h3', { text: 'Integrity checks' }),
+    el('div', { class: 'stat-row' }, checks.map(([label, value, sub]) =>
+      el('div', { class: 'stat' }, [
+        el('div', { class: 'label', text: label }),
+        el('div', { class: 'value', style: 'font-size:20px', text: value }),
+        el('div', { class: 'sub', text: sub }),
+      ]))),
+  ]));
+
   panel.append(el('div', { class: 'caveat' }, [
     el('span', { text: '⚠' }), el('div', { text: s.coverage_caveat }),
   ]));
+
+  const pending = renderPendingRulings();
+  if (pending) panel.append(pending);
 
   const maxStatus = Math.max(...s.status_counts.map((row) => row.distinct_ids), 1);
   const statusTable = tableCard('Outcome of every row', [
@@ -322,24 +345,57 @@ function renderSummary(panel) {
 
   panel.append(el('div', { class: 'grid-2' }, [statusTable, vioTable]));
 
-  const checks = [
-    ['Exact duplicate copies', num(s.duplicates), 'retained in the workbook, excluded from the VIO count'],
-    ['Duplicate ID conflicts', num(s.duplicate_conflicts), 'same ID, different values'],
-    ['Acceptances relying on power tolerance', num(s.power_tolerance_dependent),
-      s.power_tolerance_dependent ? 'each flagged per row with the kW and % gap' : 'power agreement is exact'],
-    ['Supplied labels', `${num(s.label_agreement.agree)} agree · ${num(s.label_agreement.disagree)} disagree · ${num(s.label_agreement.unassigned)} unassigned`,
-      `${num(s.label_agreement.labeled)} labelled vehicles; the labels cover one kType and do not measure general accuracy`],
-  ];
-  panel.append(card('Integrity checks', [
-    el('div', { class: 'stat-row', style: 'margin-bottom:0' }, checks.map(([label, value, sub]) =>
-      el('div', { class: 'stat' }, [
-        el('div', { class: 'label', text: label }),
-        el('div', { class: 'value', style: 'font-size:20px', text: value }),
-        el('div', { class: 'sub', text: sub }),
-      ]))),
-  ]));
-
   panel.append(renderResultsTable());
+}
+
+/* ---------- Pending rulings --------------------------------------------- */
+
+/**
+ * What a decision the mapper is not entitled to make would be worth.
+ *
+ * Deliberately not a control. There is no button here because clicking one
+ * would assign kTypes on a rule nobody approved, and the workbook the user
+ * downloads a moment later could not explain them. It states the forecast, who
+ * owns the decision, and that it has not been applied.
+ */
+function renderPendingRulings() {
+  const rulings = state.run.pending_rulings || [];
+  if (!rulings.length) return null;
+  return el('div', {}, rulings.map((r) => el('div', { class: 'ruling' }, [
+    el('div', { class: 'ruling-head' }, [
+      el('h2', { text: 'Waiting on a decision that is not ours to make' }),
+      el('span', { class: 'pill pill-pending', text: 'not applied' }),
+    ]),
+    el('p', { class: 'ruling-q', text: r.question }),
+    el('div', { class: 'ruling-figures' }, [
+      el('div', { class: 'ruling-fig' }, [
+        el('div', { class: 'label', text: 'Accepted under the documented policy' }),
+        el('div', { class: 'value', text: `${num(r.accepted_now)} / ${num(r.distinct_ids)}` }),
+        el('div', { class: 'sub', text: `${r.pct_now}% coverage` }),
+      ]),
+      el('div', { class: 'ruling-arrow', text: '→' }),
+      el('div', { class: 'ruling-fig pending' }, [
+        el('div', { class: 'label', text: 'If this ruling were approved' }),
+        el('div', { class: 'value', text: `${num(r.accepted_if_approved)} / ${num(r.distinct_ids)}` }),
+        el('div', { class: 'sub', text: `${r.pct_if_approved}% coverage · +${num(r.vehicles)} vehicles` }),
+      ]),
+    ]),
+    el('dl', { class: 'pairs' }, [
+      el('dt', { text: 'Decision owner' }),
+      el('dd', {}, [el('span', { class: 'mono', text: r.owner })]),
+      el('dt', { text: 'What would have to change' }),
+      el('dd', { text: r.settings.join(' · ') }),
+      el('dt', { text: 'Vehicles, by the kType they would resolve to' }),
+      el('dd', {}, r.candidates.flatMap((c, i) => [
+        i ? el('span', { text: ' · ' }) : null,
+        el('span', { class: 'mono', text: kType(c.kType) }),
+        el('span', { text: ` (${num(c.vehicles)})` }),
+      ])),
+    ]),
+    el('div', { class: 'caveat' }, [
+      el('span', { text: '⚠' }), el('div', { text: r.note }),
+    ]),
+  ])));
 }
 
 /* ---------- Results table ------------------------------------------------ */

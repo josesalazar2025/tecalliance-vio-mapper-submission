@@ -47,6 +47,15 @@ comparable value and the agreement narrows the pool, the agreeing kTypes form a
 review-only shortlist. This cannot override exact `CC_RATING`, repair a contradiction,
 or assign a kType.
 
+That shortlist is the **weakest** of the triage readings and is tried last. A row where
+every candidate is contradicted is triaged in this order: a single candidate blocked only
+by power within the rounding band; a single candidate blocked by exactly one
+specification; the set of candidates each blocked by exactly one specification, named as
+a shortlist without choosing between them; and only where none of those applies, the
+marketing-capacity shortlist. The order is not cosmetic — each reading returns and stops
+the rest — so it runs from what the comparison established down to what the registration
+text merely says. None of the four assigns a kType or counts a vehicle in VIO.
+
 ## 4. Reject contradictions
 
 A known contradiction vetoes a candidate. Source self-conflicts, inconsistent duplicate
@@ -62,6 +71,15 @@ make the sole compatible candidate sufficient even when an unrelated specificati
 missing. If the chassis code is absent, malformed, unsupported or outside the scoped
 manufacturer/model profile, every candidate receives `unknown` and the ordinary cascade
 continues without a penalty.
+
+Acceptance is decided by one of two selectors, and the default reads no weights at all.
+`selection='dominance'` compares the sets of Annex I criteria each candidate agrees with; it
+is the default because a weighted total asserts magnitudes, and a commensurability between
+them, that no cited source establishes. `selection='score'` retains the weighted total and is
+kept only so the contribution of weighting can be measured rather than assumed. On the supplied
+catalogue pair the two agree on 106 of 112 rows; every difference is dominance accepting where
+score refuses, and **no row is ever reassigned from one kType to another** by the choice. The
+score path is not exposed by the CLI and decides nothing in the submitted result.
 
 Without a documented manufacturer-model-code agreement, acceptance requires sufficient comparable
 evidence, at least one variant agreement, and the applicable identifier and

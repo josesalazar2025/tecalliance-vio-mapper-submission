@@ -1,0 +1,69 @@
+# Behaviour and contract tests, on every push and pull request.
+#
+# What this verifies:
+#   - the 96 behavioural tests and 69 subtests, including the status/sub-status
+#     contract enforced over a real run;
+#   - rule-table integrity -- test_public_rule_sources_match_their_recorded_hashes
+#     fails when a rule-source transcription under docs/rule-sources/ is edited
+#     without updating the sha256 recorded beside it in vio_mapper/rules/. That is
+#     the check that makes "only sourced correspondences are rules" enforceable
+#     rather than merely stated;
+#   - that the package installs from the lockfile on a machine that is not the
+#     author's, using the pinned interpreter.
+#
+# What this deliberately does NOT verify, and must never be read as verifying:
+#   - mapping correctness or coverage. The two authorized input workbooks are
+#     proprietary and are not in this repository, so no mapping runs here. The
+#     suite is self-contained by construction: it passes with data/ absent, which
+#     is exactly the state of a fresh clone.
+#   - anything about production accuracy. See docs/limitations.md.
+#
+# There is no deployment job because there is nothing to deploy: the prototype
+# makes no network calls, exposes no service beyond a local review UI, and
+# publishes no artifact. A deploy stage would be decoration.
+name: tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+# Read-only: this workflow needs nothing else.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest (Python 3.12, locked dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        # Pinned exactly: setup-uv publishes no floating major tag, so @v10
+        # does not resolve.
+        uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      - name: Install the pinned interpreter
+        run: uv python install 3.12
+
+      - name: Install locked dependencies
+        # --frozen resolves strictly from uv.lock, so a run here uses the same
+        # versions the documented figures were produced with.
+        run: uv sync --extra web --frozen
+
+      - name: Run the suite
+        run: uv run pytest -q
+
+      - name: Check the console entry points are installed
+        # Catches packaging breakage that the tests would not: a rename or a
+        # missing rule file only shows up when the shipped command is invoked.
+        run: |
+          uv run vio-mapper --help > /dev/null
+          uv run vio-mapper-bench --help > /dev/null

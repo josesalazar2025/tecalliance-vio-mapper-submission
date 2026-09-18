@@ -10,6 +10,7 @@ locator and retrieval date but are not described as pinned snapshots.
 |---|---|
 | `nz/` | NZTA field definitions, vehicle classes, body/engine types and VIN layouts |
 | `eu/` | EU/UNECE definitions used to group vehicle attributes and bound power reasoning |
+| `de/` | Kraftfahrt-Bundesamt records for WMI codes allocated to German manufacturers |
 | `manufacturers/` | Manufacturer model-code and chassis-format evidence used by scoped decoders |
 
 The proprietary RDM workbook and TecDoc Data Format PDF are not reproduced here. The
