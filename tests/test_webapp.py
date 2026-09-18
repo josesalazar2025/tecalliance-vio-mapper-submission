@@ -204,3 +204,43 @@ def test_runner_builds_the_same_review_artifacts_without_proprietary_fixtures(
         assert run.workbook.exists()
     finally:
         run.dispose()
+
+
+def test_pending_ruling_forecasts_coverage_without_accepting_anything(
+        tmp_path: Path, monkeypatch):
+    """The panel says what a data-owner ruling would be worth. It must not be
+    able to produce the outcome it forecasts: a run that reports a pending
+    ruling still assigns nothing and still counts nothing into VIO."""
+    near = [{**REFERENCE_ROWS[0], 'Maximum_output_KW': 111}]
+    reference = tmp_path / 'reference.xlsx'
+    pd.DataFrame(near).to_excel(reference, index=False)
+    monkeypatch.setattr(runner, 'DEFAULT_REFERENCE_PATH', reference)
+    source_bytes = pd.DataFrame([SOURCE_ROW]).to_csv(index=False).encode()
+
+    run = runner.execute('source.csv', source_bytes, Policy(), runner.RunStore())
+    try:
+        ruling, = run.data['pending_rulings']
+        assert ruling['owner'] == 'data_owner'
+        assert ruling['applied'] is False
+        assert ruling['vehicles'] == 1
+        assert ruling['candidates'] == [{'kType': 1, 'vehicles': 1}]
+        # The forecast moves; the run does not.
+        assert ruling['accepted_now'] == 0
+        assert ruling['accepted_if_approved'] == 1
+        assert run.data['summary']['accepted'] == 0
+        assert run.data['results'][0]['mapped kType'] is None
+        assert run.data['results'][0]['Match_Status'] != 'Matched'
+    finally:
+        run.dispose()
+
+
+def test_no_pending_ruling_is_reported_where_none_is_waiting(tmp_path: Path, monkeypatch):
+    reference = tmp_path / 'reference.xlsx'
+    pd.DataFrame(REFERENCE_ROWS).to_excel(reference, index=False)
+    monkeypatch.setattr(runner, 'DEFAULT_REFERENCE_PATH', reference)
+    source_bytes = pd.DataFrame([SOURCE_ROW]).to_csv(index=False).encode()
+    run = runner.execute('source.csv', source_bytes, Policy(), runner.RunStore())
+    try:
+        assert run.data['pending_rulings'] == []
+    finally:
+        run.dispose()

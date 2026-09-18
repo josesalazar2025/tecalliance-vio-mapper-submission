@@ -86,6 +86,14 @@ MODEL_CODE_HINT_VS_SPECIFICATION = 'model-code hint contradicted by specificatio
 IDENTIFIER_UNSUPPORTED = 'identifier absent from candidate reference'
 NO_CANDIDATE = 'no candidate passes make/model gates'
 ALL_CONTRADICTED = 'every candidate contradicts specifications'
+# A narrower reading of the same stop. Separated from ALL_CONTRADICTED because the
+# two route to different desks: a specification disagreement is a data question,
+# while a difference inside the engineering review band is a question about how the
+# two publishers rounded one number. It classifies the stop and nothing else -- the
+# headline status, the assignment and the VIO count are identical either way, and
+# whether such a difference may ever be accepted stays with power_tolerance_pct,
+# which is the data owner's to set.
+NEAR_POWER_ONLY = 'closest candidate differs only on power, within the review band'
 TIED_CANDIDATES = 'candidates tied'
 SEPARABLE_ONLY_BY_SCOPED_RULE = 'separable only by a model-specific reading'
 NARROW_MARGIN = 'margin below minimum'
@@ -126,7 +134,7 @@ STATUS_CATEGORIES = {
     CONFLICT: frozenset({SELF_CONTRADICTION, VIN_CONTRADICTION, DUPLICATE_CONFLICT,
                          IDENTIFIER_DISAGREEMENT, IDENTIFIER_VS_SPECIFICATION}),
     NO_CANDIDATE_IN_REFERENCE: frozenset({NO_CANDIDATE}),
-    ALL_CANDIDATES_CONTRADICTED: frozenset({ALL_CONTRADICTED}),
+    ALL_CANDIDATES_CONTRADICTED: frozenset({ALL_CONTRADICTED, NEAR_POWER_ONLY}),
     # One entry per selector, and no more: the score route stops such a row on
     # its threshold, the dominance route on a version criterion that went
     # unanswered. Both are the same situation and neither is the other's reason.

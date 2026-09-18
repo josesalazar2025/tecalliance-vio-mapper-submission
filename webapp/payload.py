@@ -15,14 +15,15 @@ import math
 import pandas as pd
 
 from vio_mapper.config import (ALL_STATUSES, COMPARED_FIELDS, MATCHED, column, identifiers,
-                               VETO_FIELDS, Policy, score_rules, submodel_rules, vocabularies)
+                               NEAR_POWER_ONLY, VETO_FIELDS, Policy, score_rules,
+                               submodel_rules, vocabularies)
 from vio_mapper.normalization import normalized_text
 
 # Bumped whenever a field the frontend reads is renamed, removed or changes
 # meaning. The page checks it on load: a server left running across such a change
 # serves the old field names to a newly loaded script, and every figure that moved
 # quietly renders as an em dash. A mismatch must say so instead.
-PAYLOAD_VERSION = 8
+PAYLOAD_VERSION = 9
 
 # Columns the results table shows before a reviewer opens a row. The drawer
 # fetches the whole row on demand: sending all 90 columns for every row would
@@ -292,6 +293,54 @@ def summary(results: pd.DataFrame, evidence: pd.DataFrame, metadata: dict,
         'coverage_caveat': 'Acceptance coverage under the documented rules, not measured accuracy. '
                            'No calibrated confidence score is produced.',
     }
+
+
+def pending_rulings(results: pd.DataFrame, evidence: pd.DataFrame) -> list[dict]:
+    """Unresolved coverage grouped by the decision that would settle it.
+
+    A forecast of what a ruling is worth, and never an outcome: nothing here
+    assigns a kType, enters VIO, or reaches the workbook. It exists because
+    "54% accepted" and "54% accepted, with 18% waiting on one question that is
+    not ours to answer" are different statements about the same run, and only
+    the second tells the owner of that question what it costs them.
+
+    Derived from the run that already happened rather than from a second run
+    under a policy nobody approved. The rows are the ones the decision layer
+    already classified as stopping on a near-power difference, and the candidate
+    is the one it already identified, so this panel cannot disagree with the
+    workbook: it counts rows the documented policy declined, and says why.
+    """
+    unique = _distinct_vehicles(results)
+    distinct, accepted = len(unique), int(results['count_in_vio'].sum())
+    waiting = unique[unique['Review_Category'] == NEAR_POWER_ONLY]
+    if not len(waiting) or 'review_near_power_only' not in evidence.columns:
+        return []
+    near = evidence[evidence['review_near_power_only'].fillna(False).astype(bool)]
+    keys = set(waiting['source_key'])
+    counts = (near[near['source_key'].isin(keys)]
+              .drop_duplicates(['source_key', 'KType'])
+              .groupby('KType').size().sort_values(ascending=False))
+    return [{
+        'question': 'Do the register and the catalogue record the same engine power the same way? '
+                    'These vehicles agree with one candidate on every other comparable field, '
+                    'including the VIN, and differ on power by less than the review band.',
+        'owner': 'data_owner',
+        'settings': ['power_tolerance_pct', 'agreement on a tolerated power value'],
+        'vehicles': int(len(waiting)),
+        'distinct_ids': distinct,
+        'accepted_now': accepted,
+        'accepted_if_approved': accepted + int(len(waiting)),
+        'pct_now': round(100 * accepted / distinct, 1) if distinct else 0.0,
+        'pct_if_approved': round(100 * (accepted + len(waiting)) / distinct, 1) if distinct else 0.0,
+        'candidates': [{'kType': _kType(ktype), 'vehicles': int(n)} for ktype, n in counts.items()],
+        # Said in the payload rather than only in the template, so a client that
+        # renders this cannot present it as an acceptance by omitting the caveat.
+        'applied': False,
+        'note': 'Not applied. No kType is assigned and no vehicle enters VIO on this basis. '
+                'The run above is the documented policy, which requires exact agreement on power. '
+                'Approving the rounding alone does not accept these rows: a tolerated value is '
+                'still not an agreeing one, so the criterion set would have to admit it too.',
+    }]
 
 
 def _brief_candidates(evidence: pd.DataFrame, source_key: str, result_row,

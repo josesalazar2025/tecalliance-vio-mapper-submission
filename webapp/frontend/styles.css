@@ -418,3 +418,28 @@ pre.report {
   .masthead .meta { display: none; }
   .shell { padding: 16px 16px 60px; }
 }
+
+/* ---------- Pending rulings -------------------------------------------- */
+/* Dashed throughout, and never a control: this states what a decision would be
+   worth, so it must not look like a result the run produced or offer a way to
+   apply itself. */
+.ruling { background: var(--card); border: 1px dashed var(--circuit-200); border-radius: var(--radius);
+          padding: 16px 18px; margin-bottom: 14px; }
+.ruling-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.ruling-head h2 { margin: 0; font-family: var(--font-heading); font-size: 15px; }
+.pill-pending { background: var(--circuit-50); color: var(--circuit-600);
+                border: 1px dashed var(--circuit-200); }
+.ruling-q { margin: 0 0 14px; color: var(--circuit-600); font-size: 13px; max-width: 70ch; }
+.ruling-figures { display: flex; align-items: stretch; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.ruling-fig { flex: 1 1 200px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+              padding: 10px 12px; }
+.ruling-fig.pending { border-style: dashed; border-color: var(--ignition-200); background: var(--ignition-50); }
+.ruling-fig .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+                     color: var(--circuit-400); }
+.ruling-fig .value { font-family: var(--font-heading); font-size: 26px; font-variant-numeric: tabular-nums;
+                     color: var(--circuit-900); line-height: 1.2; }
+.ruling-fig .sub { font-size: 12px; color: var(--circuit-500); }
+.ruling-arrow { align-self: center; color: var(--circuit-300); font-size: 20px; }
+.ruling .pairs { margin-bottom: 12px; }
+.ruling .caveat { margin: 0; }
+@media (max-width: 560px) { .ruling-arrow { display: none; } }
