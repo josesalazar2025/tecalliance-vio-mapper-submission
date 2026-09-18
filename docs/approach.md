@@ -26,6 +26,12 @@ remains proposal-only. The two distinct labeled examples agree with the assigned
 but two examples do not establish general accuracy. The 54.1% figure is acceptance
 coverage, not measured precision.
 
+Separately from mapping quality, the pipeline has been profiled on the published
+181,790-vehicle 2020 New Zealand register: 36 seconds to map, scaling sub-linearly
+in source rows because repeated vehicle configurations reuse a cached decision. See
+[performance.md](performance.md), which also records the one measured bottleneck,
+workbook serialization, and why it is reported rather than fixed.
+
 The recommended next step is an expert-reviewed pilot on a fresh batch. Accepted and
 unresolved groups should be adjudicated by a mapping expert before any result affects
 published VIO. Measure precision against that adjudication, correction rate, unresolved

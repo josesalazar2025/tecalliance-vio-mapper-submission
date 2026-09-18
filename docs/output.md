@@ -32,3 +32,8 @@ beside the score.
 
 The output workbook is supplied separately because its row-level evidence contains
 information derived from the proprietary input files.
+
+At the scale of the supplied extract the workbook is written in about five seconds.
+At registry scale it is the dominant cost of a run, because `Results` and
+`Review_Detail` grow to hundreds of thousands of wide rows. See
+[performance.md](performance.md) for the measurement and the recommended change.

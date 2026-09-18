@@ -399,7 +399,15 @@ def test_mercedes_mvma_hint_never_excuses_capacity_conflict():
     assert pd.isna(results.loc[0, 'proposed_kType'])
 
 
-def test_submodel_litres_create_review_shortlist_after_candidate_gates():
+def test_compatibility_evidence_outranks_the_submodel_litre_shortlist():
+    """A candidate blocked by one field beats a shortlist built from marketing text.
+
+    Both readings are available here: the registration SUBMODEL says 1.5 and two
+    candidates agree with it, while a third candidate disagrees on capacity alone
+    and agrees on every other compared specification. The second is the stronger
+    statement about the vehicle, so it is the one the review queue must carry --
+    naming one kType rather than shortlisting two.
+    """
     vehicle = prepare_source(pd.DataFrame([
         {**MERCEDES_SOURCE, 'SUBMODEL': 'C 200 1.5P/9AT', 'CC_RATING': 1491,
          'VIN11': 'W1K2050802R', 'MVMA_MODEL_CODE': '20538022-NZ5'},
@@ -423,6 +431,45 @@ def test_submodel_litres_create_review_shortlist_after_candidate_gates():
     assert compared == {11: 'agree', 12: 'agree', 20: 'disagree'}
     assert results.loc[0, 'Match_Status'] == ALL_CANDIDATES_CONTRADICTED
     assert pd.isna(results.loc[0, 'proposed_kType'])
+    assert results.loc[0, 'triage_lead_kType'] == 20
+    assert results.loc[0, 'triage_lead_blocking_field'] == 'capacity'
+    assert 'decimal point and comma spellings' not in results.loc[0, 'triage_lead_basis']
+    assert pd.isna(results.loc[0, 'mapped kType'])
+
+
+def test_submodel_litres_create_review_shortlist_when_no_single_conflict_lead():
+    """The litre shortlist is the fallback, reached only when no lead qualifies.
+
+    Every candidate here is blocked by at least two specifications, so no
+    candidate is one field from compatible and the compatibility evidence names
+    nobody. The marketing capacity is then the only narrowing available, and it
+    is exported as a shortlist that assigns nothing.
+    """
+    vehicle = prepare_source(pd.DataFrame([
+        {**MERCEDES_SOURCE, 'SUBMODEL': 'C 200 1.5P/9AT', 'CC_RATING': 1491,
+         'VIN11': 'W1K2050802R', 'MVMA_MODEL_CODE': '20538022-NZ5'},
+    ]))
+    candidates = reference(
+        {**MERCEDES_REFERENCES[0], 'KType': 11, 'Capacity_litre': '1,5',
+         'Capacity_cubic': 1497, 'Maximum_output_KW': 135,
+         'Fuel_type': 'Petrol/Electric', 'Engine_code': 'M 264.915',
+         'Type_design': '205.077'},
+        {**MERCEDES_REFERENCES[1], 'KType': 12, 'Capacity_litre': '1.5',
+         'Capacity_cubic': 1497, 'Maximum_output_KW': 135,
+         'Fuel_type': 'Petrol/Electric', 'Engine_code': 'M 264.915',
+         'Type_design': '205.277'},
+        # Blocked on capacity *and* power, so it is not one field from compatible.
+        {**MERCEDES_REFERENCES[2], 'KType': 20, 'Capacity_litre': '2,0',
+         'Maximum_output_KW': 140, 'Type_design': '205.380'},
+    )
+
+    results, evidence = map_vehicles(vehicle, candidates)
+
+    compared = evidence.set_index('KType')['submodel_capacity_litre'].to_dict()
+    assert compared == {11: 'agree', 12: 'agree', 20: 'disagree'}
+    assert results.loc[0, 'Match_Status'] == ALL_CANDIDATES_CONTRADICTED
+    assert pd.isna(results.loc[0, 'proposed_kType'])
+    assert pd.isna(results.loc[0, 'triage_lead_kType'])
     assert results.loc[0, 'triage_lead_alternatives'] == '11; 12'
     assert 'decimal point and comma spellings are equivalent' in results.loc[0, 'triage_lead_basis']
 

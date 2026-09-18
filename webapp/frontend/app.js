@@ -287,6 +287,26 @@ function renderSummary(panel) {
       `${num(s.worksheet_rows)} rows weighed against their candidate kTypes`),
   ]));
 
+  // Second row of the same stats, not a card: these qualify the figures above,
+  // and a container around them would read as a separate finding.
+  const checks = [
+    ['Exact duplicate copies', num(s.duplicates), 'retained in the workbook, excluded from the VIO count'],
+    ['Duplicate ID conflicts', num(s.duplicate_conflicts), 'same ID, different values'],
+    ['Acceptances relying on power tolerance', num(s.power_tolerance_dependent),
+      s.power_tolerance_dependent ? 'each flagged per row with the kW and % gap' : 'power agreement is exact'],
+    ['Supplied labels', `${num(s.label_agreement.agree)} agree · ${num(s.label_agreement.disagree)} disagree · ${num(s.label_agreement.unassigned)} unassigned`,
+      `${num(s.label_agreement.labeled)} labelled vehicles; the labels cover one kType and do not measure general accuracy`],
+  ];
+  panel.append(el('div', { class: 'stat-group' }, [
+    el('h3', { text: 'Integrity checks' }),
+    el('div', { class: 'stat-row' }, checks.map(([label, value, sub]) =>
+      el('div', { class: 'stat' }, [
+        el('div', { class: 'label', text: label }),
+        el('div', { class: 'value', style: 'font-size:20px', text: value }),
+        el('div', { class: 'sub', text: sub }),
+      ]))),
+  ]));
+
   panel.append(el('div', { class: 'caveat' }, [
     el('span', { text: '⚠' }), el('div', { text: s.coverage_caveat }),
   ]));
@@ -321,23 +341,6 @@ function renderSummary(panel) {
   });
 
   panel.append(el('div', { class: 'grid-2' }, [statusTable, vioTable]));
-
-  const checks = [
-    ['Exact duplicate copies', num(s.duplicates), 'retained in the workbook, excluded from the VIO count'],
-    ['Duplicate ID conflicts', num(s.duplicate_conflicts), 'same ID, different values'],
-    ['Acceptances relying on power tolerance', num(s.power_tolerance_dependent),
-      s.power_tolerance_dependent ? 'each flagged per row with the kW and % gap' : 'power agreement is exact'],
-    ['Supplied labels', `${num(s.label_agreement.agree)} agree · ${num(s.label_agreement.disagree)} disagree · ${num(s.label_agreement.unassigned)} unassigned`,
-      `${num(s.label_agreement.labeled)} labelled vehicles; the labels cover one kType and do not measure general accuracy`],
-  ];
-  panel.append(card('Integrity checks', [
-    el('div', { class: 'stat-row', style: 'margin-bottom:0' }, checks.map(([label, value, sub]) =>
-      el('div', { class: 'stat' }, [
-        el('div', { class: 'label', text: label }),
-        el('div', { class: 'value', style: 'font-size:20px', text: value }),
-        el('div', { class: 'sub', text: sub }),
-      ]))),
-  ]));
 
   panel.append(renderResultsTable());
 }

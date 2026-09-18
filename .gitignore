@@ -19,3 +19,16 @@ data/
 *.xls
 mapping_performance.md
 *_candidate_evidence.csv
+
+# Benchmark inputs and outputs: reconstructable, and too large to version.
+# See docs/performance.md for the source URL and the one command that rebuilds it.
+VehicleYear-*.csv
+benchmark_output/
+benchmark_metrics.txt
+
+
+
+# macOS metadata, anywhere in the tree.
+**/.DS_Store
+
+presentation/index.html

@@ -8,10 +8,15 @@ Algorithm version: **1.1.0**.
 
 ## Reviewer guide
 
+Start with **[the one-page brief](BRIEF.md)** — the approach, the result and the
+recommendation, for a reader who wants neither code nor caveats first.
+
 1. Read [the approach and measured result](docs/approach.md).
 2. Read [how the algorithm works](docs/algorithm.md).
 3. Inspect [the workbook guide](docs/output.md) beside the separately supplied output.
 4. Review [limitations and validation](docs/limitations.md).
+5. See [measured performance](docs/performance.md) for the scale test and profile.
+6. See [next steps](docs/next-steps.md) for the staged ML/AI case, if the pilot passes.
 
 ## Run
 
@@ -49,6 +54,38 @@ Run the repository tests with:
 uv run pytest
 ```
 
+## Continuous integration
+
+`.github/workflows/tests.yml` runs the suite on every push and pull request, on
+Ubuntu with Python 3.12 and dependencies resolved strictly from `uv.lock`.
+
+It verifies behaviour and contracts, including rule-table integrity: editing a
+transcription under `docs/rule-sources/` without updating the `sha256` recorded
+beside it in `vio_mapper/rules/` fails the build. That is what keeps *"only
+sourced correspondences are rules"* enforceable rather than merely asserted.
+
+It does **not** verify mapping correctness or coverage. The two authorized input
+workbooks are proprietary and are not in this repository, so no mapping runs in
+CI; the suite is self-contained and passes with `data/` absent, which is the
+state of a fresh clone. There is no deployment job, because there is nothing to
+deploy — the prototype makes no network calls and publishes no artifact.
+
+## Benchmark
+
+`vio-mapper-bench` times a run phase by phase and reports throughput, per-row
+latency, peak memory and the outcome distribution. It runs the ordinary decision
+path and changes no outcome.
+
+```sh
+uv run vio-mapper-bench --source VehicleYear-2020-ID.csv --format both
+```
+
+The prototype maps the published 181,790-vehicle 2020 New Zealand register in 36
+seconds and scales sub-linearly in source rows; a complete result set takes 59 seconds
+with row-level sheets written as CSV, or about eight minutes as a single workbook. See
+[docs/performance.md](docs/performance.md) for the figures, the dataset link and
+the known workbook-serialization bottleneck.
+
 ## Local review UI
 
 Install the web dependencies and start the local interface:
@@ -67,6 +104,7 @@ review session; the reference workbook remains local in `data/`. See
 
 ```text
 vio_mapper/         mapping, evidence, decision and reporting code
+vio_mapper/benchmark.py  phase timing, throughput and memory profile
 vio_mapper/rules/   versioned JSON vocabularies and policy tables
 webapp/             local review API and packaged browser interface
 docs/               reviewer documentation and rule-source transcriptions

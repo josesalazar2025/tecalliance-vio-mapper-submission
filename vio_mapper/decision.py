@@ -207,27 +207,15 @@ def triage_lead(details, policy):
     Chronology is excluded for the reason identifier proposals exclude it: a
     production interval that cannot contain the vehicle suggests the wrong
     candidate altogether, not a near miss.
-    """
-    # Marketing litres are deliberately a shortlist criterion, not a
-    # compatibility criterion.  Use them only when every gated candidate states
-    # a comparable value and the agreement genuinely narrows the pool.  Unknown
-    # values must never be silently eliminated.
-    litre_matches = [entry for entry in details
-                     if entry.get('submodel_capacity_litre') == 'agree']
-    litre_comparable = [entry for entry in details
-                        if entry.get('submodel_capacity_litre') in {'agree', 'disagree'}]
-    if (litre_matches and len(litre_comparable) == len(details)
-            and len(litre_matches) < len(details)):
-        alternatives = sorted(entry['KType'] for entry in litre_matches)
-        return {
-            'kType': None,
-            'field': 'submodel capacity',
-            'alternatives': alternatives,
-            'basis': (f"{column('submodel')} capacity agrees numerically with reference "
-                      f"Capacity_litre for {len(alternatives)} of {len(details)} candidates; "
-                      'decimal point and comma spellings are equivalent; shortlist only'),
-        }
 
+    The readings are tried strongest first, and that ordering is the whole point
+    of this function. Compatibility evidence -- which fields actually agreed and
+    disagreed -- comes before the marketing capacity written in the registration
+    text, because the first is the comparison the algorithm performed and the
+    second is a string a person typed. Trying the weaker reading first does not
+    merely mis-rank the queue: it returns early and suppresses the stronger one
+    entirely, so a row that could have named one kType names six instead.
+    """
     leads = []
     for entry in details:
         if entry['compatible'] or not entry['disagreements']:
@@ -236,8 +224,6 @@ def triage_lead(details, policy):
         if len(conflicts) != 1 or conflicts & score_rules()['unproposable_conflicts']:
             continue
         leads.append((entry, next(iter(conflicts))))
-    if not leads:
-        return None
     rounding = [pair for pair in leads if pair[1] == 'power' and pair[0]['power_within_triage_band']]
     if len(rounding) == 1:
         entry, conflict = rounding[0]
@@ -247,15 +233,43 @@ def triage_lead(details, policy):
     elif len(leads) == 1:
         entry, conflict = leads[0]
         basis = f'blocked only by {conflict}; every other compared specification agrees'
-    else:
+    elif len(leads) > 1:
         fields = '; '.join(sorted({conflict for _, conflict in leads}))
         return {'kType': None, 'field': fields, 'alternatives': sorted(e['KType'] for e, _ in leads),
                 'basis': f'{len(leads)} candidates are each blocked by exactly one specification '
                          f'({fields}); none is named, because choosing between them is the reviewer '
                          'decision, not a triage step'}
+    else:
+        return _litre_shortlist(details)
     return {'kType': entry['KType'], 'field': conflict, 'basis': basis,
             'alternatives': sorted(other['KType'] for other, _ in leads
                                    if other['KType'] != entry['KType'])}
+
+
+def _litre_shortlist(details):
+    """The weakest reading: marketing capacity in the registration text.
+
+    Deliberately a shortlist criterion and not a compatibility criterion, and
+    deliberately the last thing `triage_lead` tries. It is used only when every
+    gated candidate states a comparable value and the agreement genuinely narrows
+    the pool; unknown values must never be silently eliminated.
+    """
+    litre_matches = [entry for entry in details
+                     if entry.get('submodel_capacity_litre') == 'agree']
+    litre_comparable = [entry for entry in details
+                        if entry.get('submodel_capacity_litre') in {'agree', 'disagree'}]
+    if not (litre_matches and len(litre_comparable) == len(details)
+            and len(litre_matches) < len(details)):
+        return None
+    alternatives = sorted(entry['KType'] for entry in litre_matches)
+    return {
+        'kType': None,
+        'field': 'submodel capacity',
+        'alternatives': alternatives,
+        'basis': (f"{column('submodel')} capacity agrees numerically with reference "
+                  f"Capacity_litre for {len(alternatives)} of {len(details)} candidates; "
+                  'decimal point and comma spellings are equivalent; shortlist only'),
+    }
 
 
 def scoped_structural_preference(details, candidate_ids):
@@ -273,6 +287,26 @@ def scoped_structural_preference(details, candidate_ids):
     the answer, because with candidates identical in every other respect
     eliminating one *is* selecting the other. So the reading names the likely
     candidate for a reviewer and the row stays unassigned.
+
+    **Inert on the supplied catalogue pair, and on every registry shipped here.**
+    This function can only fire where `submodel_cab` resolves to 'consistent' or
+    'disagree'. It resolves to 'unknown' on all 7,645 candidate-evidence rows of
+    the supplied run, because the cab restriction it depends on was removed from
+    `rules/registries/nz.json`: that restriction rested on a Holden model-lineup
+    specification which is not an NZTA, TecAlliance or RDM source and could not be
+    produced for review. The removal is recorded in the `cab_configurations`
+    description in that file.
+
+    The consequence matters for reading the Colorado result and is stated here so
+    that nobody infers otherwise from this code: the ten Colorado rows stop as
+    `candidates not separated by criterion set`, not as `separable only by a
+    model-specific reading`, and separating them needs the KT 086 ruling named in
+    the review queue, not this function. The function is retained rather than
+    deleted because a registry that does publish a cab vocabulary would want
+    exactly this behaviour -- name the candidate, assign nothing -- and because
+    `SEPARABLE_ONLY_BY_SCOPED_RULE` is a declared status with a contract entry in
+    `config.STATUS_CATEGORIES` and a rendering path in the review UI. It is
+    unreachable today, not speculative.
     """
     considered = [entry for entry in details if entry['KType'] in candidate_ids]
     favoured = [entry for entry in considered if entry['submodel_cab'] == 'consistent']

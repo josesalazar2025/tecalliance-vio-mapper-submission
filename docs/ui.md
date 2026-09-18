@@ -10,14 +10,10 @@ The interface lets a reviewer:
 - inspect accepted and unresolved totals;
 - review grouped questions and candidate-level evidence;
 - inspect review-only text similarity used to order otherwise tied candidates;
-- inspect rule and audit information; and
+- inspect rule and audit information; 
 - download the generated workbook.
 
-It deliberately exposes one documented decision policy. Alternative thresholds and
-diagnostic selectors are not browser controls, so a presentation run cannot silently
-use settings different from the submitted result.
-
-The UI is a local demonstration, not a deployed service. Runs are temporary, retained
+The UI is a local demonstration, and runs are temporary, retained
 only in process memory and local temporary directories, and limited to 20,000 source
 rows. The proprietary reference workbook remains on the local machine under `data/`
 and is never served as a download. The result workbook is generated lazily on the first
