@@ -1,5 +1,34 @@
 # Validation and limitations
 
+## Assumptions the result rests on
+
+The business framing was left open deliberately, so these are recorded rather than
+left implicit. Each is a place where a correction from TecAlliance changes the answer,
+and none of them is settled by the material supplied with the task.
+
+- **How much of the mapping is already automated — unknown, and not guessed.** The
+  stated motivation is reducing manual mapping effort. That establishes manual effort
+  exists; it does not say whether a person touches every vehicle today or only the
+  exceptions. Nothing in the recommendation depends on knowing, because the pilot
+  measures review effort against whatever the process actually is. But if much of it is
+  already automated, the effort available to save is smaller than the coverage figure
+  suggests, and that is worth establishing before a pilot rather than during one.
+- **The cost of a reviewed vehicle — unknown, and deliberately not invented.** The shape
+  of the work is described here; it is not priced. Multiplying an outside estimate by
+  111 would have produced a confident number resting on nothing.
+- **The reference is an extract, not the catalogue.** 365 rows. Where this submission
+  reports that no kType exists for a vehicle — the fourteen Ford Rangers — that is a
+  statement about the supplied extract, not a claim that TecAlliance's full catalogue
+  lacks them.
+- **The two supplied labels are not a test set.** Two records carry a `mapped kType`,
+  both the same kType. They are consistency checks, not a basis for measuring accuracy,
+  and no figure in this submission is presented as precision.
+- **VIO counts distinct vehicle IDs, not worksheet rows.** One exact duplicate is
+  retained in the output for audit and counted once.
+- **A registry value is not corrected, only reported.** Where the two publishers
+  disagree, the row stops and quotes both. Deciding which one is wrong belongs to the
+  data owner, and doing it here would hide the disagreement behind an assignment.
+
 The repository contains behavioral tests for normalization, evidence semantics,
 candidate selection, duplicate handling, source conflicts, identifier safeguards, VIN
 rules, reporting and rule-table integrity: 96 tests and 69 subtests. Run them with
