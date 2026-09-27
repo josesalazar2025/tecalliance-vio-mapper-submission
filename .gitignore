@@ -32,3 +32,5 @@ benchmark_metrics.txt
 **/.DS_Store
 
 presentation/index.html
+# Private interview preparation: never part of the submission.
+technical-qa.*
