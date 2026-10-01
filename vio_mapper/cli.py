@@ -49,6 +49,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--stream-evidence', action=argparse.BooleanOptionalAction, default=None,
                         help='Stream candidate evidence to a sibling CSV instead of holding it in memory. '
                              f'Default: automatic above {STREAM_ROW_THRESHOLD} source rows.')
+    parser.add_argument('--execution', choices=('baseline', 'optimized'), default='baseline',
+                        help='Execution scheduler. Both use algorithm 1.1.0 (default: %(default)s).')
+    parser.add_argument('--workers', type=int, default=1,
+                        help='Closed-partition workers in optimized mode (default: %(default)s).')
+    parser.add_argument('--checkpoint-dir', type=Path, default=None,
+                        help='Resumable Parquet partition directory for optimized mode.')
+    parser.add_argument('--bulk-gate', action=argparse.BooleanOptionalAction, default=True,
+                        help='Enable the optimized vectorized candidate gate.')
+    parser.add_argument('--group-decisions', action=argparse.BooleanOptionalAction, default=True,
+                        help='Decide each exact decision configuration once.')
+    parser.add_argument('--partitioned', action=argparse.BooleanOptionalAction, default=True,
+                        help='Use closed make/model partitions (disable for fallback).')
     return parser
 
 
@@ -123,16 +135,34 @@ def main(argv=None) -> None:
     policy = policy_from_arguments(args)
     stream = len(source) > STREAM_ROW_THRESHOLD if args.stream_evidence is None else args.stream_evidence
     evidence_path = args.output.with_name(args.output.stem + '_candidate_evidence.csv')
-    if stream:
+    if args.execution == 'optimized':
+        from .optimized import ExecutionOptions, map_vehicles_optimized
+        results, evidence, _ = map_vehicles_optimized(
+            source, reference, policy,
+            options=ExecutionOptions(workers=args.workers,
+                                     checkpoint_dir=args.checkpoint_dir,
+                                     bulk_gate=args.bulk_gate,
+                                     group_decisions=args.group_decisions,
+                                     partitioned=args.partitioned),
+            include_score_diagnostics=False)
+        evidence_rows = len(evidence)
+        if stream:
+            evidence.to_csv(evidence_path, index=False)
+            evidence = pd.DataFrame([{
+                'note': 'Candidate evidence was written to CSV by optimized execution.',
+                'file': evidence_path.name, 'rows': evidence_rows,
+                'retention': policy.evidence,
+            }])
+    elif stream:
         results, evidence, evidence_rows = map_vehicles_streaming(
             source, reference, policy, evidence_path, include_score_diagnostics=False)
     else:
         results, evidence = map_vehicles(
             source, reference, policy, include_score_diagnostics=False)
         evidence_rows = len(evidence)
-        if evidence_rows >= EXCEL_MAX_ROWS:
-            raise ValueError(f'{evidence_rows} candidate-evidence rows exceed the {EXCEL_MAX_ROWS} '
-                             'worksheet limit; rerun with --stream-evidence, or narrow --evidence retention')
+    if not stream and evidence_rows >= EXCEL_MAX_ROWS:
+        raise ValueError(f'{evidence_rows} candidate-evidence rows exceed the {EXCEL_MAX_ROWS} '
+                         'worksheet limit; rerun with --stream-evidence, or narrow --evidence retention')
     metadata = run_metadata(results, policy, args.source, args.reference)
     sheets = build_sheets(results, evidence, policy, metadata)
     write_workbook(sheets, args.output)

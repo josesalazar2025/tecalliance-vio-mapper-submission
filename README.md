@@ -86,6 +86,76 @@ with row-level sheets written as CSV, or about eight minutes as a single workboo
 [docs/performance.md](docs/performance.md) for the figures, the dataset link and
 the known workbook-serialization bottleneck.
 
+### Full-registry execution
+
+The opt-in throughput path keeps algorithm 1.1.0 but changes how work is stored
+and scheduled. Prepare the immutable, reusable execution dataset once, then run
+one, two, or four closed make/model partitions:
+
+```sh
+uv run vio-mapper-throughput prepare \
+  --source /path/to/official-register.zip \
+  --reference /path/to/reference.xlsx \
+  --output-dir execution-data
+
+uv run vio-mapper-throughput run \
+  --dataset execution-data \
+  --output-dir mapped-run \
+  --workers 4
+```
+
+For the full 5.9-million-row registry, use the bounded executor. It partitions
+the prepared source by make, model and year on disk, then checkpoints each
+bucket independently. Rerunning the same command reuses completed buckets:
+
+```sh
+uv run vio-mapper-throughput run-bounded \
+  --dataset execution-data \
+  --output-dir mapped-run-bounded \
+  --buckets 512 --workers 2
+```
+
+Results and compact candidate evidence are under
+`mapped-run-bounded/mapped-buckets/bucket-*/`. The pair of `bucket_id` and
+`decision_id` connects a result row to its evidence. The `bounded-manifest.json`
+contains completion state and aggregate counts; `complete: true` means every
+source row has one result. Use `--max-buckets N` or repeated `--bucket-id N` for
+a validation slice. The ordinary `run` command materializes the whole source
+and is intended for smaller datasets.
+
+After a full run, verify saved row coverage, status totals and evidence links:
+
+```sh
+uv run vio-mapper-throughput audit-bounded \
+  --dataset execution-data --output-dir mapped-run-bounded
+```
+
+To compare two completed bounded runs, including every saved result and compact
+candidate-evidence value:
+
+```sh
+uv run vio-mapper-throughput compare-bounded mapped-run-bounded mapped-run-repeat
+```
+
+The run writes deterministic Parquet results and evidence, resumable partition
+fragments, and `benchmark-manifest.json`. Each phase has an independent switch:
+`--no-bulk-gate`, `--no-group-decisions`, and `--no-partitioned`. The ordinary
+`vio-mapper` command remains the baseline unless `--execution optimized` is set.
+Evidence stays compact at one copy per decision by default; add
+`--expand-evidence` for row-level regression comparisons or review exports.
+
+Create a manifest for baseline CSV/Parquet outputs and enforce semantic equality
+without depending on row order or container metadata:
+
+```sh
+uv run vio-mapper-throughput manifest \
+  --results baseline-results.csv --evidence-file baseline-evidence.csv \
+  --source /path/to/source.zip --reference /path/to/reference.xlsx \
+  --output baseline-manifest.json
+uv run vio-mapper-throughput compare \
+  baseline-manifest.json mapped-run/benchmark-manifest.json
+```
+
 ## Local review UI
 
 Install the web dependencies and start the local interface:
